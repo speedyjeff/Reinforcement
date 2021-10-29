@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27204.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Learning", "Learning\Learning.csproj", "{ABADC593-FE7B-4C0E-BBE0-95C281801BEF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Maze", "Maze\Maze.csproj", "{5DD53E4E-D104-466F-816B-3C44C4D1DFBD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicTacToe", "TicTacToe\TicTacToe.csproj", "{F7D36F6C-3581-42B7-9E35-CEA769690C94}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ABADC593-FE7B-4C0E-BBE0-95C281801BEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABADC593-FE7B-4C0E-BBE0-95C281801BEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABADC593-FE7B-4C0E-BBE0-95C281801BEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABADC593-FE7B-4C0E-BBE0-95C281801BEF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DD53E4E-D104-466F-816B-3C44C4D1DFBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DD53E4E-D104-466F-816B-3C44C4D1DFBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DD53E4E-D104-466F-816B-3C44C4D1DFBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DD53E4E-D104-466F-816B-3C44C4D1DFBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7D36F6C-3581-42B7-9E35-CEA769690C94}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7D36F6C-3581-42B7-9E35-CEA769690C94}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7D36F6C-3581-42B7-9E35-CEA769690C94}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7D36F6C-3581-42B7-9E35-CEA769690C94}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {46492048-FB56-4BFA-BED3-7C94FB169444}
+	EndGlobalSection
+EndGlobal
