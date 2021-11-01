@@ -150,6 +150,12 @@ O's first move preference:
 ## How to run
 
 ```
+// train the models
+> ./tictactoe
+who is playing X [(c)omputer or (h)uman]: c
+who is playing O [(c)omputer or (h)uman]: c
+how many rounds: 100000
+// play
 > ./tictactoe
 who is playing X [(c)omputer or (h)uman]: h
 who is playing O [(c)omputer or (h)uman]: c
