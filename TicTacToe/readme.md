@@ -19,7 +19,7 @@ X's go first.
 Randomly choose from the available moves.  The key thing to notice is that a random strategy saw few unique boards as it did not fully walk all possible combinations.
 
 Stats (out of 1,000,000)     | X's    | O's
------------------------------------------------
+-----------------------------|--------|--------
 More wins than loses (after) |      2 |   2,095
 Last lose                    | 15,603 | 958,696
 Unique boards seen           |  1,664 |   2,867
@@ -63,7 +63,7 @@ O's first move preference:
 The random computer will look for 2 in a row of its own color and win if it can, or look for 2 in a row of the opponent and block.  Else it will choose a random place to put a piece.  More unique boards considered when going first, but fewer when going second (eg. it explored even less of the possible boards than random).
 
 Stats (out of 1,000,000)     | X's     | O's
-------------------------------------------------
+-----------------------------|---------|--------
 More wins than loses (after) |   8,054 |   1,513
 Last lose                    | 976,266 | 785,420
 Unique boards seen           |   1,982 |   2,109
@@ -109,7 +109,7 @@ O's first move preference:
 Learn as the computers choose from the available moves.  Each learning at the same time (with seperate models).  Due to how QLearning works, these models explore more fully all possible combinations.
 
 Stats (out of 1,000,000)  | X's    | O's
---------------------------------------------
+--------------------------|--------|--------
 Start to hit only cat's   |  8,538 | 8,538
 Unique boards seen        |  3,299 | 2,975
 Possible moves considered | 10,573 | 9,484

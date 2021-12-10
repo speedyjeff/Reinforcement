@@ -153,17 +153,6 @@ namespace TicTacToe
         [AllowNull] 
         private readonly ModelDetails Details;
 
-        /*
-        [JsonSerializable(typeof(ModelDetails))]
-        private partial class ModelDetailsJsonContext : JsonSerializerContext
-        {
-            public override JsonTypeInfo? GetTypeInfo(Type type)
-            {
-                throw new NotImplementedException();
-            }
-        }
-        */
-
         //
         // Previous model
         //
