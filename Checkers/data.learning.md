@@ -28,7 +28,7 @@ White goes first (down) and should win.
 ##### Adjusting Learning
 The learning parameter adjusts how much prior konwledge is leveraged.  Running experimental data suggests that relying more on prior knowledge (less learning) yielded more contexts being discovered.  This was a surprising outcome.
 
-![learning](https://github.com/speedyjeff/reinforcement/blob/master/media/learning.png)
+![learning](https://github.com/speedyjeff/Reinforcement/blob/main/Media/learning.png)
 
 ```
 Max turns: 8, Iterations: 10,000
@@ -90,7 +90,7 @@ Learning | Iteration | White Context | Black Context
 ##### Adjusting Discount
 The discount parameter adjusts if short or long term outcomes should be valued more.  Experimental data suggests that valuing shorter term outcomes yielded more contexts being discovered.  This is not very surprising.
 
-![learning](https://github.com/speedyjeff/reinforcement/blob/master/media/discount.png)
+![discount](https://github.com/speedyjeff/Reinforcement/blob/main/Media/discount.png)
 
 ```
 Max turns: 8, Iterations: 10,000
@@ -152,7 +152,7 @@ Discount | Iteration | White Context | Black Context
 ##### Adjusting Reward
 The reward is a value added every time an action is taken.  In our case, it is a negative value (eg. it costs to move).  The outcome is that more contexts were found when the reward is the lowest.  Given how long the chains are from a win to first move, this is not very surprising.
 
-![learning](https://github.com/speedyjeff/reinforcement/blob/master/media/reward.png)
+![reward](https://github.com/speedyjeff/Reinforcement/blob/main/Media/reward.png)
 
 ```
 Max turns: 8, Iterations: 10,000
@@ -214,7 +214,7 @@ Reward | Iteration | White Context | Black Context
 ##### Adjusting Learning + Discount + Reward
 Putting all these learning togehter yields 16% to 19% more contexts.  However, the resulting model tends to favor a cats game and was not able to settle on a model that would not occasionally allow black to win (which in this scenario it should not).
 
-![learning](https://github.com/speedyjeff/reinforcement/blob/master/media/together.png)
+![together](https://github.com/speedyjeff/Reinforcement/blob/main/Media/together.png)
 
 ```
 Max turns: 8, Iterations: 10,000

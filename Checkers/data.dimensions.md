@@ -10,9 +10,9 @@ The full 8x8 checkers board has too many combinations for Q Learning to model an
 3  b  -  b  -
 ```
 
-Contexts | White | Black
----------|-------|------
-         | 755   | 776
+White | Black
+-------|------
+755   | 776
 
  * Trends to 100% cats within 10,000 iterations
  * When plyaing against a random player, the learning opponent will win >99% of the time
@@ -27,9 +27,9 @@ Contexts | White | Black
 4  -  b  -  b  -
 ```
 
-Contexts | White | Black
----------|-------|------
-         | 34,982| 32,737
+White | Black
+-------|------
+34,982| 32,737
 
  * Trends to 100% black wins within 20,2000 iterations
  * When playing against a random player, the learning oppnent will win >99% of the time
@@ -45,9 +45,9 @@ Contexts | White | Black
 5  b  -  b  -  b  -
 ```
 
-Contexts | White | Black
----------|-------|------
- | 6,504,604+ | 6,518,064+
+White | Black
+-------|------
+6,504,604+ | 6,518,064+
 
  * After 2,000,000+ iterations, no clear winnner was found.  White, black, and cats occur at about the same rate.
  * Reducing the max turns to 24 still did not have a clear winner within 1,000,000 iterations.

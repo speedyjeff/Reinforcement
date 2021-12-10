@@ -22,7 +22,7 @@ White goes first (down) and should win.
  * This method is more effective at finding more unique contexts as compared with Random (almost 2x at max moves of 14).
 
 Max Moves | White Context | Ratio w/ Random | Black Context | White Win | Black Win | Cats
-----------|---------------|---------------|-----------|-----------|------
+----------|---------------|-----------------|---------------|-----------|-----------|------
 8 | 4,389 | 1.19 | 6,187 | 0 | 0 | 1,000,000
 10 | 11,190 | 1.05 | 22,327 | 0 | 0 | 1,000,000
 12 | 17,830 | 1.79 | 46,649 | 0 | 0 | 1,000,000

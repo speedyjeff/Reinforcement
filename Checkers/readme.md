@@ -1,4 +1,4 @@
-## Teachers a learning model to play Checkers
+## Teaching a learning model to play Checkers
 Checkers has been around for a very long time, and learning programs have been built that are capable of winning against human players.  The start of that journey was with [Jonathan Schaeffer's Chinook](https://www.theatlantic.com/technology/archive/2017/07/marion-tinsley-checkers/534111/).  Schaeffer is quotes as saying the following about the complexity of modeling Checkers:
 
 "Imagine draining the Pacific Ocean and then having to fill it back up with a tiny cup, one at a time. The sea is the number of checkers possibilities. The cup is each calculation."
