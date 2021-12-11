@@ -9,12 +9,11 @@ namespace Learning
     // K is the action
     public class Q<T,K>
     {
+        // reward     : cost of taking an action (default -0.04)
+        // learning   : 0 [no learning/rely on prior knowledge] ... [1] only most recent info (default 0.5)
+        // discount   : 0 [short term rewards] ... 1 [long term rewards] (default 1)
         public Q(double reward, double learning, double discount)
         {
-            // reward     : cost of taking an action (default -0.04)
-            // learning   : 0 [no learning/rely on prior knowledge] ... [1] only most recent info (default 0.5)
-            // discount   : 0 [short term rewards] ... 1 [long term rewards] (default 1)
-
             Rand = new Random();
             Reward = reward;
             Learning = learning;
