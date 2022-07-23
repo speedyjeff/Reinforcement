@@ -11,7 +11,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TicTacToe", "TicTacToe\TicT
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Checkers", "Checkers\Checkers.csproj", "{4377D3E5-C9D9-49A7-82E8-6FF23D5B0BBA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Tests", "Checkers.Tests\Checkers.Tests.csproj", "{3AB3A796-E973-41A4-9740-F2E855997768}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Checkers.Tests", "Checkers.Tests\Checkers.Tests.csproj", "{3AB3A796-E973-41A4-9740-F2E855997768}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Digits", "Digits", "{094EF391-1529-4AF1-B83C-ECCB68F85CE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Viewer", "Digits\Viewer\Viewer.csproj", "{615C2D01-A707-4C3F-950A-1AD0B3F2BE04}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mnist", "Digits\mnist\mnist.csproj", "{BC3134E7-FB0A-4640-8078-0058F8EEBF63}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mnistdriver", "Digits\mnistdriver\mnistdriver.csproj", "{9B66B9FC-D5D6-48C9-9BD3-C3B359404126}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,9 +47,26 @@ Global
 		{3AB3A796-E973-41A4-9740-F2E855997768}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3AB3A796-E973-41A4-9740-F2E855997768}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3AB3A796-E973-41A4-9740-F2E855997768}.Release|Any CPU.Build.0 = Release|Any CPU
+		{615C2D01-A707-4C3F-950A-1AD0B3F2BE04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{615C2D01-A707-4C3F-950A-1AD0B3F2BE04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{615C2D01-A707-4C3F-950A-1AD0B3F2BE04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{615C2D01-A707-4C3F-950A-1AD0B3F2BE04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC3134E7-FB0A-4640-8078-0058F8EEBF63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC3134E7-FB0A-4640-8078-0058F8EEBF63}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC3134E7-FB0A-4640-8078-0058F8EEBF63}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC3134E7-FB0A-4640-8078-0058F8EEBF63}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B66B9FC-D5D6-48C9-9BD3-C3B359404126}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B66B9FC-D5D6-48C9-9BD3-C3B359404126}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B66B9FC-D5D6-48C9-9BD3-C3B359404126}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B66B9FC-D5D6-48C9-9BD3-C3B359404126}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{615C2D01-A707-4C3F-950A-1AD0B3F2BE04} = {094EF391-1529-4AF1-B83C-ECCB68F85CE3}
+		{BC3134E7-FB0A-4640-8078-0058F8EEBF63} = {094EF391-1529-4AF1-B83C-ECCB68F85CE3}
+		{9B66B9FC-D5D6-48C9-9BD3-C3B359404126} = {094EF391-1529-4AF1-B83C-ECCB68F85CE3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {46492048-FB56-4BFA-BED3-7C94FB169444}
