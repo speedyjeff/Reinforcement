@@ -5,7 +5,7 @@ This is a sample for using a neural network on The MNIST database of handwritten
 
 The Viewer can be used to preview some or all the samples to get a sense of what is being evaluated. Here are a few examples.
 
-![4](https://github.com/speedyjeff/Reinforcement/blob/master/Digits/media/4.png) ![2](https://github.com/speedyjeff/shootmup/blob/master/Reinforcement/blob/master/Digits/media/4.png)
+![4](https://github.com/speedyjeff/Reinforcement/blob/main/Digits/media/4.png) ![2](https://github.com/speedyjeff/Reinforcement/blob/main/Digits/media/2.png)
 
 These images are shrunk down to a 28 x 28 pixels and converted to grayscale (each pixel represented by a number between 0.0 and 1.0).  The 784 pixels are fed into the neural network and a prediction of which digit (0-9) is seen is shared.
 
