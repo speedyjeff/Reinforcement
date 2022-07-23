@@ -1,3 +1,4 @@
+using Learning;
 using mnist;
 using System.Data;
 using System.Windows.Forms;
@@ -10,11 +11,11 @@ namespace Viewer
         {
             InitializeComponent();
             Width = 1024;
-            Height = 300;
+            Height = 600;
 
             // setup controls
             var table = new TableLayoutPanel();
-            table.RowCount = 4;
+            table.RowCount = 6;
             table.ColumnCount = DisplayNumber;
             table.Width = Width;
             table.Height = Height;
@@ -48,15 +49,63 @@ namespace Viewer
             button = new Button() { Text = "load data", Height = 50, Width = 200 };
             button.Click += LoadData_Click;
             table.Controls.Add(button, column: 0, row: 3);
+
+            // draw surface
+            DrawingControl = new DrawDigit() { Width = 256, Height = 256};
+            table.Controls.Add(DrawingControl, column: 0, row: 4);
+
+            button = new Button() { Text = "clear", Height = 50, Width = 200 };
+            button.Click += (sender, e) => { DrawingControl.Clear(); };
+            table.Controls.Add(button, column: 1, row: 4);
+
+            button = new Button() { Text = "predict", Height = 50, Width = 200 };
+            button.Click += PredictButton_Click;
+            table.Controls.Add(button, column: 2, row: 4);
+
+            PredictionText = new Label() { Width = 200, Height = 50 };
+            PredictionText.Text = "";
+            table.Controls.Add(PredictionText, column: 3, row: 4);
+
+            // load the model
+            var tmppath = Path.GetTempFileName();
+            try
+            {
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                foreach (var resourceName in assembly.GetManifestResourceNames())
+                {
+                    if (resourceName.Contains("hidden10.txt", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // dump this file to disk
+                        using (var stream = assembly.GetManifestResourceStream(resourceName))
+                        {
+                            using(var reader = new StreamReader(stream))
+                            {
+                                File.WriteAllText(tmppath, reader.ReadToEnd());
+                            }
+                        }
+                    }
+                }
+
+                // load the model
+                Network = NeuralNetwork.Load(tmppath);
+            }
+            finally
+            {
+                if (File.Exists(tmppath)) File.Delete(tmppath);
+            }
         }
 
         #region private
         private PictureBox[] DisplayImages;
         private Label[] DisplayLabels;
         private TextBox DisplayText;
+        private DrawDigit DrawingControl;
+        private Label PredictionText;
 
         private Dataset Labels;
         private Dataset Images;
+
+        private NeuralNetwork Network;
 
         private const int DisplayNumber = 5;
 
@@ -75,9 +124,10 @@ namespace Viewer
                 }
             }
 
-            // display data
+            // if loaded
             if (Labels != null && Images != null)
             {
+                // display data
                 DisplayText.Text = "0";
                 Display_Click(sender: null, e: null);
             }
@@ -134,6 +184,33 @@ namespace Viewer
             bitmap.RotateFlip(RotateFlipType.Rotate90FlipX);
 
             return bitmap;
+        }
+
+
+        private void PredictButton_Click(object? sender, EventArgs e)
+        {
+            var desiredWidth = 28;
+            var desiredHieght = 28;
+
+            // get the image
+            var bitmap = DrawingControl.GetImage(desiredWidth, desiredHieght);
+
+            // convert to gray scale float[] input
+            var input = new float[desiredWidth * desiredHieght];
+            for(var y=0; y<bitmap.Height; y++)
+            {
+                for(var x = 0; x<bitmap.Width; x++)
+                {
+                    var pixel = bitmap.GetPixel(x, y);
+                    input[(y * desiredWidth) + x] = (float)((byte)((pixel.R + pixel.G + pixel.B) / 3)) / 255f;
+                }
+            }
+
+            // run the model
+            var result = Network.Evaluate(input);
+
+            // display the result
+            PredictionText.Text = $"{result.Result}"; 
         }
         #endregion
     }

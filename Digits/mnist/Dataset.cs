@@ -47,6 +47,7 @@ namespace mnist
 
             // parse the data
             var int32buffer = new byte[4];
+            var normalize = false;
 
             // read in the magic number
             if (inputstream.Read(int32buffer, offset: 0, count: 4) != int32buffer.Length) throw new Exception("no header");
@@ -66,6 +67,7 @@ namespace mnist
             {
                 // labels
                 dataset.Rows = dataset.Columns = 1;
+                normalize = false;
             }
             else if (dataset.MagicNumber == 0x00000803)
             {
@@ -75,6 +77,9 @@ namespace mnist
 
                 if (inputstream.Read(int32buffer, offset: 0, count: 4) != int32buffer.Length) throw new Exception("no header");
                 dataset.Columns = BitConverter.ToInt32(int32buffer.Reverse<byte>().ToArray());
+
+                // transform the data into [0.0-1.0]
+                normalize = true;
             }
             else
             {
@@ -91,9 +96,13 @@ namespace mnist
                 if (inputstream.Read(ldata, offset: 0, count: dataset.Rows * dataset.Columns) != (dataset.Rows * dataset.Columns)) 
                     throw new Exception("not enough data");
 
-                // convert
+                // copy
                 dataset.Data[i] = new float[dataset.Rows * dataset.Columns];
-                for (int j = 0; j < ldata.Length; j++) dataset.Data[i][j] = (float)ldata[j] / 255f;
+                for (int j = 0; j < ldata.Length; j++)
+                {
+                    if (normalize) dataset.Data[i][j] = (float)ldata[j] / 255f;
+                    else dataset.Data[i][j] = (float)ldata[j];
+                }
             }
 
             return dataset;

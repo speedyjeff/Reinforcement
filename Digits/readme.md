@@ -25,30 +25,32 @@ All models start with crypto random values between -0.5 and 0.5, for all weights
 
 _                    | 784 x 10 x 10 | 784 x 16 x 16 x 10 | 784 x 10 x 10 x 10 x 10 |
 ---------------------|---------------|--------------------|-------------------------|
-Learning rate = 0.15 | 99.99167%     | 99.90833%          | 100%                    |
+Learning rate = 0.15 | 27.508333%    | 26.991667%         | 18.691668%              |
 Mini batch = 100     | | | |
 Iterations = 1       | | | |
 Input size = 60K     | | | |
 Split - 80/20        | | | |
 ---------------------|---------------|--------------------|-------------------------|
-Learning rate = 0.80 | 99.958336%    | 99.99167%          | 100%                    |
-Mini batch = 100     | | | |
-Iterations = 1       | | | |
-Input size = 60K     | | | |
-Split - 80/20        | | | |
+Learning rate = 0.80 | 45.675%       | 59.625%            | 31.191668%              |
+Mini batch = 100     | w/ shuffle    | w/ shuffle         | w/ shuffle              |
+Iterations = 1       | 57.325%       | 49.408333%         | 22.983334%              |
+Input size = 60K     | 10 itreations | 10 itreations      | 10 itreations           |
+Split - 80/20        | 78.525%       | 75.48333%          | 65.59167%               |
 ---------------------|---------------|--------------------|-------------------------|
-Learning rate = 0.15 | 52.983334%    | 29.841667%         | 0%                      |
+Learning rate = 0.15 | 9.291667%     | 12.233334%         | 12.341666%              |
 Mini batch = 1000    | | | |
 Iterations = 1       | | | |
 Input size = 60K     | | | |
 Split - 80/20        | | | |
 ---------------------|---------------|--------------------|-------------------------|
-Learning rate = 0.15 | 100%          | 100%               | 100%                    |
+Learning rate = 0.15 | 10.05%        | 10.066667%         | 9.808333%               |
 Mini batch = 1       | | | |
 Iterations = 1       | | | |
 Input size = 60K     | | | |
 Split - 80/20        | | | |
 ---------------------|---------------|--------------------|-------------------------|
+
+The best performing model has a hidden layer of 10 neurons, learning rate of 0.8f, and enabling shuffling.  This model achieves roughly 85% accuracy when trained for 20 iterations.
 
 ### How to run
 

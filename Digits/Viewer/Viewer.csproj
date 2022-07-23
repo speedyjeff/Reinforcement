@@ -9,6 +9,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="hidden10.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="hidden10.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Learning\Learning.csproj" />
     <ProjectReference Include="..\mnist\mnist.csproj" />
   </ItemGroup>
 

@@ -32,7 +32,7 @@ namespace mnistdriver
                 images = labels;
                 labels = tmp;
             }
-            if (images.MagicNumber != 0x00000803 || labels.MagicNumber == 0x00000801)
+            if (images.MagicNumber != 0x00000803 || labels.MagicNumber != 0x00000801)
             {
                 Console.WriteLine("err! invalid input");
                 return -2;
@@ -87,6 +87,9 @@ namespace mnistdriver
             int[] splitindexes = null;
             if (options.Split > 0)
             {
+                // ensure the indexes are shuffled
+                Shuffle(ref indexes);
+
                 var len = (int)(options.Split * indexes.Length);
                 // split the arrays into two chunks
                 splitindexes = new int[len];
@@ -115,8 +118,9 @@ namespace mnistdriver
             // run with the remaining indexes
             if (splitindexes != null && splitindexes.Length > 0)
             {
-                // do ont train this round
+                // do ont train this round (only 1 iteration necessary)
                 options.NoTrain = true;
+                options.Iterations = 1;
 
                 // run
                 stats = Run(options, network, images, labels, splitindexes);
