@@ -132,7 +132,7 @@ namespace mnistdriver
             // complete the run
             if (!options.NoSave) network.Save(options.ModelPath);
 
-            return 0;
+            return (int)stats.Pass;
         }
 
         #region private

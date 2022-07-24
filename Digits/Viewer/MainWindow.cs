@@ -73,7 +73,7 @@ namespace Viewer
                 var assembly = System.Reflection.Assembly.GetExecutingAssembly();
                 foreach (var resourceName in assembly.GetManifestResourceNames())
                 {
-                    if (resourceName.Contains("hidden10.txt", StringComparison.OrdinalIgnoreCase))
+                    if (resourceName.Contains("hidden18.txt", StringComparison.OrdinalIgnoreCase))
                     {
                         // dump this file to disk
                         using (var stream = assembly.GetManifestResourceStream(resourceName))
@@ -173,9 +173,9 @@ namespace Viewer
                 for (int c = 0; c < columns; c++)
                 {
                     bitmap.SetPixel(r, c, Color.FromArgb(
-                        red: (byte)(bytes[(r * rows) + c] * 255),
-                        green: (byte)(bytes[(r * rows) + c] * 255),
-                        blue: (byte)(bytes[(r * rows) + c] * 255))
+                        red: (byte)(bytes[(r * columns) + c] * 255),
+                        green: (byte)(bytes[(r * columns) + c] * 255),
+                        blue: (byte)(bytes[(r * columns) + c] * 255))
                         );
                 }
             }

@@ -52,6 +52,13 @@ Split - 80/20        | | | |
 
 The best performing model has a hidden layer of 10 neurons, learning rate of 0.8f, and enabling shuffling.  This model achieves roughly 85% accuracy when trained for 20 iterations.
 
+Here is some additional data on how these configurations influence the overall model prediction rate.
+
+![learningrate](https://github.com/speedyjeff/Reinforcement/blob/main/Digits/media/learningrate.png)
+![minibatch.png](https://github.com/speedyjeff/Reinforcement/blob/main/Digits/media/minibatch.png)
+![hiddenlayer](https://github.com/speedyjeff/Reinforcement/blob/main/Digits/media/hiddenlayer.png)
+![hiddenlayer2](https://github.com/speedyjeff/Reinforcement/blob/main/Digits/media/hiddenlayer2.png)
+
 ### How to run
 
 Download all 4 gz mnist dataset [here](http://yann.lecun.com/exdb/mnist).  The program will unzip and read the data, so nothing beyond downloading is necessary.

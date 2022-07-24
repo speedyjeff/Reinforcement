@@ -10,10 +10,12 @@
 
   <ItemGroup>
     <None Remove="hidden10.txt" />
+    <None Remove="hidden18.txt" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="hidden10.txt" />
+    <EmbeddedResource Include="hidden18.txt" />
   </ItemGroup>
 
   <ItemGroup>
