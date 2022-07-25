@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO.Compression;
 using System.IO;
 using System.Globalization;
+using System.Data.Common;
 
 // http://yann.lecun.com/exdb/mnist/
 
@@ -107,5 +108,54 @@ namespace mnist
 
             return dataset;
         }
+
+        public static void Write(string filename, Dataset data)
+        {
+            using (var stream = File.Open(filename, FileMode.Create))
+            {
+                using (var writer = new BinaryWriter(stream))
+                {
+                    // magic number
+                    writer.Write(ToHighEndian(data.MagicNumber));
+                    // number of items
+                    writer.Write(ToHighEndian(data.Count));
+                    // if images, writes row and columns
+                    if (data.MagicNumber == 0x00000803)
+                    {
+                        // rows
+                        writer.Write(ToHighEndian(data.Rows));
+                        // columns
+                        writer.Write(ToHighEndian(data.Columns));
+                    }
+                    // write values
+                    for (int i = 0; i < data.Data.Length; i++)
+                    {
+                        for(int j=0; j < data.Data[i].Length; j++)
+                        {
+                            if (data.Data[i][j] > 0f && data.Data[i][j] < 1f) writer.Write((byte)data.Data[i][j] * 255);
+                            else writer.Write((byte)data.Data[i][j]);
+                        }
+                    }
+                }
+            }
+
+        }
+
+        #region private
+        private static byte[] ToHighEndian(int value)
+        {
+            var bytes = BitConverter.GetBytes(value);
+
+            // swap
+            for (int i = 0; i < bytes.Length / 2; i++)
+            {
+                var t = bytes[i];
+                bytes[i] = bytes[bytes.Length - i - 1];
+                bytes[bytes.Length - i - 1] = t;
+            }
+
+            return bytes;
+        }
+        #endregion
     }
 }

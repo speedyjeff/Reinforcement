@@ -1,4 +1,5 @@
-﻿using System;
+﻿using mnist;
+using System;
 using System.IO;
 
 public class MnistTests
@@ -30,33 +31,34 @@ public class MnistTests
         try
         {
             // create data
-            var data = new byte[20];
-            for (int i = 0; i < data.Length; i++) data[i] = (byte)(i % 10);
+            var initdata = new Dataset()
+            {
+                MagicNumber = 0x00000801,
+                Rows = 1,
+                Columns = 1,
+                Count = 20
+            };
+            initdata.Data= new float[initdata.Count][];
+            for (int i = 0; i < initdata.Data.Length; i++)
+            {
+                initdata.Data[i] = new float[1];
+                initdata.Data[i][0] = (byte)(i % 10);
+            }
 
             // write the data
-            using (var stream = File.Open(tmpfile, FileMode.Create))
-            {
-                using (var writer = new BinaryWriter(stream))
-                {
-                    // magic number
-                    writer.Write(0x01080000); // MSB first (high endian) format 
-                    // number of items
-                    writer.Write(0x14000000); // MSB first(high endian) format
-                    for (int i = 0; i < data.Length; i++) writer.Write(data[i]);
-                }
-            }
+            Dataset.Write(tmpfile, initdata);
 
             // read in the data
             var dataset = mnist.Dataset.Read(tmpfile);
 
-            if (dataset.MagicNumber != 0x00000801) throw new Exception("wrong magic number");
-            if (dataset.Count != data.Length) throw new Exception("invalid length");
+            if (dataset.MagicNumber != initdata.MagicNumber) throw new Exception("wrong magic number");
+            if (dataset.Count != initdata.Count) throw new Exception("invalid length");
 
             // validate
             for(int i=0; i<dataset.Count; i++)
             {
                 if (dataset.Data[i].Length != 1) throw new Exception("invalid data length");
-                if ((byte)dataset.Data[i][0] != data[i]) throw new Exception("invalid data");
+                if ((byte)dataset.Data[i][0] != initdata.Data[i][0]) throw new Exception("invalid data");
             }
         }
         finally
@@ -87,51 +89,42 @@ public class MnistTests
         try
         {
             // create data
-            var rows = 3;
-            var columns = 3;
-            var data = new byte[2][];
-            var constdata = new byte[] { 0, 255, 100, 125, 254, 1, 34, 42, 255 };
-            for (int r = 0; r < data.Length; r++)
+            var initdata = new Dataset()
             {
-                data[r] = new byte[rows*columns];
-                for(int i=0; i < data[r].Length; i++)
+                MagicNumber = 0x00000803,
+                Rows = 3,
+                Columns = 3,
+                Count = 2
+            };
+            initdata.Data = new float[initdata.Count][];
+            var constdata = new byte[] { 0, 255, 100, 125, 254, 1, 34, 42, 255 };
+            for (int r = 0; r < initdata.Data.Length; r++)
+            {
+                initdata.Data[r] = new float[initdata.Rows*initdata.Columns];
+                for(int i=0; i < initdata.Data[r].Length; i++)
                 {
-                    data[r][i] = constdata[i];
+                    initdata.Data[r][i] = constdata[i];
                 }
             }
 
             // write the data
-            using (var stream = File.Open(tmpfile, FileMode.Create))
-            {
-                using (var writer = new BinaryWriter(stream))
-                {
-                    // magic number
-                    writer.Write(0x03080000); // MSB first (high endian) format 
-                    // number of items
-                    writer.Write(0x02000000); // MSB first(high endian) format
-                    // rows
-                    writer.Write(0x03000000); // MSB first(high endian) format
-                    // columns
-                    writer.Write(0x03000000); // MSB first(high endian) format
-                    for (int i = 0; i < data.Length; i++) writer.Write(data[i]);
-                }
-            }
+            Dataset.Write(tmpfile, initdata);
 
             // read in the data
             var dataset = mnist.Dataset.Read(tmpfile);
 
-            if (dataset.MagicNumber != 0x00000803) throw new Exception("wrong magic number");
-            if (dataset.Count != data.Length) throw new Exception("invalid length");
-            if (dataset.Rows != rows) throw new Exception("invalid rows");
-            if (dataset.Columns != columns) throw new Exception("invalid columns");
+            if (dataset.MagicNumber != initdata.MagicNumber) throw new Exception("wrong magic number");
+            if (dataset.Count != initdata.Data.Length) throw new Exception("invalid length");
+            if (dataset.Rows != initdata.Rows) throw new Exception("invalid rows");
+            if (dataset.Columns != initdata.Columns) throw new Exception("invalid columns");
 
             // validate
             for (int i = 0; i < dataset.Count; i++)
             {
-                if (dataset.Data[i].Length != rows*columns) throw new Exception("invalid data length");
+                if (dataset.Data[i].Length != initdata.Rows*initdata.Columns) throw new Exception("invalid data length");
                 for (int j = 0; j < dataset.Data[i].Length; j++)
                 {
-                    if (dataset.Data[i][j] != (float)data[i][j]/255f) throw new Exception("invalid data");
+                    if (dataset.Data[i][j] != (float)initdata.Data[i][j]/255f) throw new Exception("invalid data");
                 }
             }
         }
