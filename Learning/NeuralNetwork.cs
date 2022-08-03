@@ -324,7 +324,7 @@ namespace Learning
                             // W = W - alpha * dW
                             Weight[layer][neuron] = Subtract(Weight[layer][neuron], Multiply(LearningRate / (float)Updates.Count, agg.dW[layer][neuron]));
 
-                            // B = B - alpha * dB // DEBUG
+                            // B = B - alpha * dB
                             Bias[layer][neuron][0] = Bias[layer][neuron][0] - ((LearningRate / (float)Updates.Count) * agg.dB[layer][neuron]);
                         }
                     }
@@ -552,10 +552,19 @@ namespace Learning
         {
             if (a.Length != b.Length) throw new Exception("lengths must match");
             var result = 0f;
+            var sign = 1;
             for(int i=0; i<a.Length && i<b.Length; i++)
             {
                 result += (a[i] * b[i]);
+
+                // check where the result was heading
+                if (!Double.IsNaN(result) && !Double.IsInfinity(result)) sign = result < 0 ? -1 : 1;
             }
+
+            // cap
+            if (Double.IsPositiveInfinity(result) || (Double.IsNaN(result) && sign > 0)) result = Single.MaxValue;
+            else if (Double.IsNegativeInfinity(result) || (Double.IsNaN(result) && sign < 0)) result = Single.MinValue;
+
             return result;
         }
 
@@ -569,12 +578,20 @@ namespace Learning
             var result = new float[a[0].Length];
             for (int i = 0; i < a[0].Length; i++)
             {
+                var sign = 1;
                 for (int j = 0; j < b.Length; j++)
                 {
                     // keeping the column stable (eg. i) while
                     // walking the row (eg. j)
                     result[i] += a[j][i] * b[j];
+
+                    // check where the result was heading
+                    if (!Double.IsNaN(result[i]) && !Double.IsInfinity(result[i])) sign = result[i] < 0 ? -1 : 1;
                 }
+
+                // cap
+                if (Double.IsPositiveInfinity(result[i]) || (Double.IsNaN(result[i]) && sign > 0)) result[i] = Single.MaxValue;
+                else if (Double.IsNegativeInfinity(result[i]) || (Double.IsNaN(result[i]) && sign < 0)) result[i] = Single.MinValue;
             }
             return result;
         }

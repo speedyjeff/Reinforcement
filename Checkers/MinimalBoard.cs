@@ -9,6 +9,10 @@ namespace Checkers
 {
     public struct MinimalBoard
     {
+        public MinimalBoard()
+        {
+        }
+
         public static MinimalBoard Create(CheckersBoard board)
         {
             // create the minimal board based on the CheckersBoard

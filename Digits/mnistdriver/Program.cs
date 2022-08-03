@@ -3,7 +3,7 @@ using mnist;
 using System;
 using static System.Net.Mime.MediaTypeNames;
 using System.Diagnostics;
-using System.Reflection.Emit;
+
 
 namespace mnistdriver
 {
@@ -110,29 +110,33 @@ namespace mnistdriver
             }
 
             // run the model
-            var stats = Run(options, network, images, labels, indexes);
-
-            // display stats
-            if (!options.Quiet) stats.Display();
-
-            // run with the remaining indexes
-            if (splitindexes != null && splitindexes.Length > 0)
+            var retval = 0;
+            if (options.Unsupervised)
             {
-                // do ont train this round (only 1 iteration necessary)
-                options.NoTrain = true;
-                options.Iterations = 1;
+                // run unsupervised
+                retval = RunUnsupervised(options, network, images, labels, indexes);
+            }
+            else
+            {
+                // run supervised training
+                retval = Run(options, network, images, labels, indexes);
 
-                // run
-                stats = Run(options, network, images, labels, splitindexes);
+                // run with the remaining indexes
+                if (splitindexes != null && splitindexes.Length > 0)
+                {
+                    // do ont train this round (only 1 iteration necessary)
+                    options.NoTrain = true;
+                    options.Iterations = 1;
 
-                // display stats
-                if (!options.Quiet) stats.Display();
+                    // run
+                    retval = Run(options, network, images, labels, splitindexes);
+                }
             }
 
             // complete the run
             if (!options.NoSave) network.Save(options.ModelPath);
 
-            return (int)stats.Pass;
+            return retval;
         }
 
         #region private
@@ -181,7 +185,7 @@ namespace mnistdriver
             #endregion
         }
 
-        private static Stats Run(Options options, NeuralNetwork network, Dataset images, Dataset labels, int[] indexes)
+        private static int Run(Options options, NeuralNetwork network, Dataset images, Dataset labels, int[] indexes)
         {
             var stats = new Stats();
 
@@ -222,7 +226,70 @@ namespace mnistdriver
             // flush any pending learning
             network.ForceUpdate();
 
-            return stats;
+            // display stats
+            if (!options.Quiet) stats.Display();
+
+            return (int)stats.Pass;
+        }
+
+        private static int RunUnsupervised(Options options, NeuralNetwork network, Dataset images, Dataset labels, int[] indexes)
+        {
+            // result x {label, count}
+            var tracking = new Dictionary<int, Dictionary<int, int>>();
+
+            // execute iterations times
+            for (int iteration = 0; iteration < options.Iterations; iteration++)
+            {
+                var timer = new Stopwatch();
+
+                // shuffle the indexes
+                if (options.Shuffle) Shuffle(ref indexes);
+
+                // run
+                timer.Start();
+                foreach (var i in indexes)
+                {
+                    // run
+                    var result = network.Evaluate(images.Data[i]);
+
+                    // train (reinforce the choosen output as the right bucket)
+                    if (!options.NoTrain) network.Learn(result, result.Result);
+
+                    // tracking
+                    var key1 = result.Result;
+                    var key2 = (int)labels.Data[i][0];
+                    if (!tracking.TryGetValue(key1, out Dictionary<int, int> dist))
+                    {
+                        dist = new Dictionary<int, int>();
+                        tracking.Add(key1, dist);
+                    }
+                    if (!dist.ContainsKey(key2)) dist.Add(key2, 1);
+                    else dist[key2]++;
+                }
+                timer.Stop();
+
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"{iteration} : {(float)timer.ElapsedMilliseconds / (float)images.Count}ms");
+                    foreach(var okvp in tracking)
+                    {
+                        Console.Write($"  {okvp.Key}");
+                        foreach(var ikvp in okvp.Value)
+                        {
+                            Console.Write($" {ikvp.Key}:{ikvp.Value}");
+                        }
+                        Console.WriteLine();
+                    }
+                }
+            }
+
+            // flush any pending learning
+            network.ForceUpdate();
+
+            // display stats
+            if (!options.Quiet) { }
+
+            return 0;
         }
 
         private static void Shuffle(ref int[] indexes)

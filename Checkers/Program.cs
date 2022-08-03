@@ -179,7 +179,7 @@ public class CheckersGame
             else if (choice.StartsWith("h", StringComparison.OrdinalIgnoreCase)) return new Human();
             else if (choice.StartsWith("c", StringComparison.OrdinalIgnoreCase)) return new SmartComputer(side, dimension, reward, learning, discount);
             else if (choice.StartsWith("p", StringComparison.OrdinalIgnoreCase)) return new PsuedoRandomComputer();
-            else if (choice.StartsWith("e", StringComparison.OrdinalIgnoreCase)) return new ExtensionSampleComputer(side, dimension, reward, learning, discount);
+            else if (choice.StartsWith("e", StringComparison.OrdinalIgnoreCase)) return new ExtensionSampleComputer(side, reward, learning, discount);
             else Console.WriteLine("** incorrect selection **");
         }
     }

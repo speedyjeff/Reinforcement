@@ -21,6 +21,7 @@ namespace mnistdriver
         public int Iterations { get; set; }
         public bool Quiet { get; set; }
         public float Split { get; set; }
+        public bool Unsupervised { get; set; }
 
         public static void Help()
         {
@@ -38,6 +39,7 @@ namespace mnistdriver
             Console.WriteLine("   -iterations             - number of iterations to run (default 1)");
             Console.WriteLine("   -quiet                  - do not display the final stast (default false)");
             Console.WriteLine("   -split                  - percentage [0.0,1.0] to split the input to use as validation data (default 0.0)");
+            Console.WriteLine("   -unsupervised           - run as an autoencoder, use the labels to validate grouping but not training");
         }
 
         public static Options Parse(string[] args)
@@ -115,6 +117,10 @@ namespace mnistdriver
                 {
                     if (i + 1 < args.Length) options.Split = Convert.ToSingle(args[++i]);
                 }
+                else if (args[i].StartsWith("-u", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.Unsupervised = true;
+                }
                 else
                 {
                     Console.WriteLine($"unknown argument : {args[i]}");
@@ -162,6 +168,13 @@ namespace mnistdriver
                     options.ShowHelp = true;
                 }
             }
+            if (options.Unsupervised && options.Split > 0)
+            {
+                Console.WriteLine("unsupervised is not supported with splitting the data");
+                options.ShowHelp = true;
+            }
+
+            // fix incorrect parameters
             if (string.IsNullOrWhiteSpace(options.ModelPath)) options.NoSave = true;
             if (options.Split < 0) options.Split = 0f;
             if (options.Split > 1) options.Split = 1f;

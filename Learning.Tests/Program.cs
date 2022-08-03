@@ -9,6 +9,7 @@ namespace Learning
         {
             NeuralNetworkTests.EndToEnd();
             NeuralNetworkTests.HiddenLayers();
+            NeuralNetworkTests.Converge();
         }
     }
 }

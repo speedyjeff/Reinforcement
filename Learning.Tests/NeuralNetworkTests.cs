@@ -119,6 +119,55 @@ namespace Learning.Tests
             }
         }
 
+        public static void Converge()
+        {
+            // make sure that a neural network eventually will predict the right 
+            // outcome
+
+            var tmpimages = Path.GetTempFileName();
+            var tmplabels = Path.GetTempFileName();
+
+            try
+            {
+                // init
+                CreateTrainingData(tmpimages, tmplabels);
+                var images = Dataset.Read(tmpimages);
+                var labels = Dataset.Read(tmplabels);
+                var minput = images.Rows * images.Columns;
+                var moutput = 5;
+
+               var nn = new NeuralNetwork(
+                        new NeuralOptions()
+                        {
+                            InputNumber = minput,
+                            OutputNumber = moutput,
+                            HiddenLayerNumber = new int[] {10},
+                            MinibatchCount = 1,
+                            LearningRate = 0.8f
+                        });
+
+                var iteration = 0;
+                while (true)
+                {
+                    // train & learn
+                    var output = nn.Evaluate(images.Data[0]);
+                    nn.Learn(output, (int)labels.Data[0][0]);
+
+                    // loop until it predicts the right value
+
+                    if (output.Result == (int)labels.Data[0][0]) break;
+                    iteration++;
+                }
+
+                if (iteration > 1) throw new Exception("too many iterations");
+            }
+            finally
+            {
+                if (File.Exists(tmpimages)) File.Delete(tmpimages);
+                if (File.Exists(tmplabels)) File.Delete(tmplabels);
+            }
+        }
+
         #region private
         private static void CreateTrainingData(string imagesfile, string labelfile)
         {
