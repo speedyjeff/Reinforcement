@@ -272,7 +272,7 @@ The neural network is playing as 'o' after 'x' has choose cell 0.
 ```
 
 Learning rate == 0.15f
-![0.15f](https://github.com/speedyjeff/Reinforcement/blob/main/MSSedia/learning15.png)
+![0.15f](https://github.com/speedyjeff/Reinforcement/blob/main/Media/learning15.png)
 
 Learning rate == 0.0015f
 ![0.0015f](https://github.com/speedyjeff/Reinforcement/blob/main/Media/learning0015.png)
