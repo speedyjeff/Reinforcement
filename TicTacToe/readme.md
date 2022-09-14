@@ -272,10 +272,10 @@ The neural network is playing as 'o' after 'x' has choose cell 0.
 ```
 
 Learning rate == 0.15f
-![0.15f](https://github.com/speedyjeff/Reinforcement/blob/main/learning15.png)
+![0.15f](https://github.com/speedyjeff/Reinforcement/blob/main/media/learning15.png)
 
 Learning rate == 0.0015f
-![0.0015f](https://github.com/speedyjeff/Reinforcement/blob/main/learning0015.png)
+![0.0015f](https://github.com/speedyjeff/Reinforcement/blob/main/media/learning0015.png)
 
 The wild swing in the large learning rate highlights that it is taking recent wins too much into account.  The smaller learning rate smooths out the learning and helps to identify the most successful (over time) move for each situation.
 
@@ -289,7 +289,7 @@ Move 1 - 'x' choose 0, and 'o' choose 4
 ---|---|---
    |   |   
 ```
-![move1](https://github.com/speedyjeff/Reinforcement/blob/main/move1.png)
+![move1](https://github.com/speedyjeff/Reinforcement/blob/main/media/move1.png)
 
 Move 2 - 'x' choose 3, and 'o' choose 6
 ```
@@ -299,7 +299,7 @@ Move 2 - 'x' choose 3, and 'o' choose 6
 ---|---|---
  o |   |   
 ```
-![move2](https://github.com/speedyjeff/Reinforcement/blob/main/move2.png)
+![move2](https://github.com/speedyjeff/Reinforcement/blob/main/media/move2.png)
 The graph shows a strong bias for the block early on.
 
 Move 3 - 'x' choose 1, and 'o' choose 2
@@ -310,6 +310,6 @@ Move 3 - 'x' choose 1, and 'o' choose 2
 ---|---|---
  o |   |   
 ```
-![move3](https://github.com/speedyjeff/Reinforcement/blob/main/move3.png)
+![move3](https://github.com/speedyjeff/Reinforcement/blob/main/media/move3.png)
 
 Using this output data helped me tune all the parameters.  I looked at the context it was considering and made a judgement call if the previous or current tuning yielded a better decision from the model.
