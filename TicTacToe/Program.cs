@@ -16,14 +16,14 @@ namespace TicTacToe
             var currentRound = 0;
             var wins = new int[2];
 
-            // choose the players
-            players[(int)Piece.X] = ChoosePlayer(Piece.X, dimension);
-            players[(int)Piece.O] = ChoosePlayer(Piece.O, dimension);
-
             // ask how many rounds
             Console.Write("how many rounds: ");
             var input = Console.ReadLine();
             if (!Int32.TryParse(input, out int rounds)) rounds = 0;
+
+            // choose the players
+            players[(int)Piece.X] = ChoosePlayer(Piece.X, dimension, rounds);
+            players[(int)Piece.O] = ChoosePlayer(Piece.O, dimension, rounds);
 
             // play in a loop
             while (true)
@@ -72,7 +72,10 @@ namespace TicTacToe
                 while (!board.IsDone(out winningPiece));
 
                 // sum win
-                if (winningPiece != Piece.Empty) wins[(int)winningPiece]++;
+                if (winningPiece != Piece.Empty)
+                {
+                    wins[(int)winningPiece]++;
+                }
 
                 // display the win
                 if ((rounds - currentRound) <= 0)
@@ -127,11 +130,11 @@ namespace TicTacToe
 
         #region private
         [return: NotNull]
-        private static IPlayer ChoosePlayer(Piece piece, int dimension)
+        private static IPlayer ChoosePlayer(Piece piece, int dimension, int rounds)
         {
             while(true)
             {
-                Console.Write($"who is playing {piece} [(c)omputer or (h)uman]: ");
+                Console.Write($"who is playing {piece} [(c)omputer | (h)uman | (r)andom | (s)mart | (n)eural]: ");
                 var choice = Console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(choice)) continue;
@@ -139,6 +142,7 @@ namespace TicTacToe
                 else if (choice.StartsWith("h", StringComparison.OrdinalIgnoreCase)) return new Human();
                 else if (choice.StartsWith("r", StringComparison.OrdinalIgnoreCase)) return new RandomComputer();
                 else if (choice.StartsWith("s", StringComparison.OrdinalIgnoreCase)) return new SmartRandomComputer(piece);
+                else if (choice.StartsWith("n", StringComparison.OrdinalIgnoreCase)) return new NeuralComputer(piece, dimension, rounds);
                 else Console.WriteLine("** incorrect selection **");
             }
         }
