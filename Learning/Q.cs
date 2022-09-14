@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
+// todo
+//  Epsilon-Greedy (inject some random choices to avoid over fitting)
+//  Double-Q Learning (use a shadow Q table to avoid bias while learning)
+
 namespace Learning
 {
     // T is the context

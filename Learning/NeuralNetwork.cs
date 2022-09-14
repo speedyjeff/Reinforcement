@@ -35,6 +35,7 @@ namespace Learning
     public struct NeuralOutput
     {
         public int Result;
+        public float[] Probabilities;
 
         #region internal
         internal float[] Input;
@@ -185,8 +186,12 @@ namespace Learning
 
             // output is the index with the greatest value in An
             var max = Single.MinValue;
+            output.Probabilities = new float[output.A[output.A.Length - 1].Length];
             for(int i=0; i < output.A[output.A.Length-1].Length; i++)
             {
+                // copy all probabilities
+                output.Probabilities[i] = output.A[output.A.Length - 1][i];
+                // find the largest
                 if (max < output.A[output.A.Length - 1][i])
                 {
                     max = output.A[output.A.Length - 1][i];
@@ -206,7 +211,7 @@ namespace Learning
             if (output.Result < 0 || output.Result >= OutputNumber ||
                 output.Input == null || output.A == null || output.Z == null ||
                 output.Input.Length != InputNumber) throw new Exception("invalid output");
-
+ 
             // highlevel:
             //  compute the partial deriviatives of
             //    dC/dweight and dC/dbias
