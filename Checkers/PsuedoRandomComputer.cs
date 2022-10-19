@@ -59,6 +59,10 @@ namespace Checkers
         {
         }
 
+        public void Save()
+        {
+        }
+
         #region private
         private Dictionary<string, Dictionary<string, int>> Memory;
 

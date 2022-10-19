@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 
 // A lot of reference matreial was used to generate this code.  Here are a few of the most useful materials I found.
@@ -140,7 +141,7 @@ namespace Learning
             };
 
             // save input
-            for (int i = 0; i < input.Length; i++) output.Input[i] = input[i];
+            Array.Copy(input, output.Input, input.Length);
 
             // Highlevel: 
             //  Each neuron in layer 1 is connected to each neuron in layer 2, 
@@ -169,10 +170,10 @@ namespace Learning
                 // last round
                 //    Zn = [Weightn] dot [An-1] + [Biasn]
                 output.Z[layer] = new float[Weight[layer].Length];
-                for (int neuron = 0; neuron < Weight[layer].Length; neuron++)
+                Parallel.For(fromInclusive: 0, toExclusive: Weight[layer].Length, (neuron) =>
                 {
                     output.Z[layer][neuron] = Dot(Weight[layer][neuron], (layer == 0) ? input : output.A[layer - 1]) + Bias[layer][neuron][0];
-                }
+                });
 
                 // first round
                 //    A0 = ReLU(Z0)
@@ -204,13 +205,23 @@ namespace Learning
 
         public void Learn(NeuralOutput output, int preferredResult)
         {
+            if (preferredResult < 0 || preferredResult >= OutputNumber) throw new Exception("invalid preferred result");
+            // create the output array with the right element set
+            var preferredResuts = new float[OutputNumber];
+            preferredResuts[preferredResult] = 1f;
+            // learn
+            Learn(output, preferredResuts);
+        }
+
+        public void Learn(NeuralOutput output, float[] preferredResuts)
+        { 
             // backward propogate
 
             // validate
-            if (preferredResult < 0 || preferredResult >= OutputNumber) throw new Exception("invalid preferred result");
             if (output.Result < 0 || output.Result >= OutputNumber ||
                 output.Input == null || output.A == null || output.Z == null ||
                 output.Input.Length != InputNumber) throw new Exception("invalid output");
+            if (preferredResuts == null || preferredResuts.Length != OutputNumber) throw new Exception("invalid preferred results");
  
             // highlevel:
             //  compute the partial deriviatives of
@@ -244,8 +255,7 @@ namespace Learning
             };
 
             // create the output array with the right element set
-            var Y = new float[output.A[layer].Length];
-            Y[preferredResult] = 1f;
+            var Y = preferredResuts;
 
             // float[] dZ = 2 * (A - Y)
             dZlast = Multiply(2f, Subtract(output.A[layer], Y));
@@ -255,7 +265,7 @@ namespace Learning
 
             // float dB = dZ
             update.dB[layer] = new float[dZlast.Length];
-            for (int i = 0; i < update.dB[layer].Length; i++) update.dB[layer][i] = dZlast[i];
+            Array.Copy(dZlast, update.dB[layer], dZlast.Length);
 
             // compute the rest in context of these values, backwards
             for (layer = Weight.Length - 2; layer >= 0; layer--)
@@ -270,7 +280,7 @@ namespace Learning
 
                 // float dB = dZ
                 update.dB[layer] = new float[dZcurrent.Length];
-                for (int i = 0; i < update.dB[layer].Length; i++) update.dB[layer][i] = dZcurrent[i];
+                Array.Copy(dZcurrent, update.dB[layer], dZcurrent.Length);
 
                 // pass dZcurrent calculation to next layer
                 dZlast = dZcurrent;
@@ -302,27 +312,24 @@ namespace Learning
                     // average the updates
                     foreach(var u in Updates)
                     {
-                        for (var layer = 0; layer < Weight.Length && layer < Bias.Length; layer++)
+                        Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, (layer) =>
                         {
                             // bias'
-                            agg.dB[layer] = new float[u.dB[layer].Length];
+                            if (agg.dB[layer] == null) agg.dB[layer] = new float[u.dB[layer].Length];
                             for (var j = 0; j < u.dB[layer].Length; j++) agg.dB[layer][j] += u.dB[layer][j];
 
                             // weights
-                            agg.dW[layer] = new float[u.dW[layer].Length][];
+                            if (agg.dW[layer] == null) agg.dW[layer] = new float[u.dW[layer].Length][];
                             for (var j = 0; j < u.dW[layer].Length; j++)
                             {
-                                agg.dW[layer][j] = new float[u.dW[layer][j].Length];
-                                for (var k = 0; k < u.dW[layer][j].Length; k++)
-                                {
-                                    agg.dW[layer][j][k] += u.dW[layer][j][k];
-                                }
+                                if (agg.dW[layer][j] == null) agg.dW[layer][j] = new float[u.dW[layer][j].Length];
+                                for (var k = 0; k < u.dW[layer][j].Length; k++) agg.dW[layer][j][k] += u.dW[layer][j][k];
                             }
-                        }
+                        });
                     }
 
                     // update the weights and bias'
-                    for (var layer = 0; layer < Weight.Length; layer++)
+                    Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, (layer) =>
                     {
                         for (int neuron = 0; neuron < Weight[layer].Length; neuron++)
                         {
@@ -332,7 +339,7 @@ namespace Learning
                             // B = B - alpha * dB
                             Bias[layer][neuron][0] = Bias[layer][neuron][0] - ((LearningRate / (float)Updates.Count) * agg.dB[layer][neuron]);
                         }
-                    }
+                    });
 
                     // clear
                     Updates.Clear();
@@ -562,13 +569,17 @@ namespace Learning
             {
                 result += (a[i] * b[i]);
 
-                // check where the result was heading
-                if (!Double.IsNaN(result) && !Double.IsInfinity(result)) sign = result < 0 ? -1 : 1;
+                // check where the result was heading (unwrap the function calls IsNan, IsInfinity)
+                if (result == result &&
+                    result != Single.PositiveInfinity &&
+                    result != Single.NegativeInfinity) sign = result < 0 ? -1 : 1;
+                // done with the loop
+                else break;
             }
 
             // cap
-            if (Double.IsPositiveInfinity(result) || (Double.IsNaN(result) && sign > 0)) result = Single.MaxValue;
-            else if (Double.IsNegativeInfinity(result) || (Double.IsNaN(result) && sign < 0)) result = Single.MinValue;
+            if (Single.IsPositiveInfinity(result) || (Single.IsNaN(result) && sign > 0)) result = Single.MaxValue;
+            else if (Single.IsNegativeInfinity(result) || (Single.IsNaN(result) && sign < 0)) result = Single.MinValue;
 
             return result;
         }
@@ -590,13 +601,17 @@ namespace Learning
                     // walking the row (eg. j)
                     result[i] += a[j][i] * b[j];
 
-                    // check where the result was heading
-                    if (!Double.IsNaN(result[i]) && !Double.IsInfinity(result[i])) sign = result[i] < 0 ? -1 : 1;
+                    // check where the result was heading (unwrap the function calls IsNan, IsInfinity)
+                    if (result[i] == result[i] &&
+                        result[i] != Single.PositiveInfinity &&
+                        result[i] != Single.NegativeInfinity) sign = result[i] < 0 ? -1 : 1;
+                    // done with the loop
+                    else break;
                 }
 
                 // cap
-                if (Double.IsPositiveInfinity(result[i]) || (Double.IsNaN(result[i]) && sign > 0)) result[i] = Single.MaxValue;
-                else if (Double.IsNegativeInfinity(result[i]) || (Double.IsNaN(result[i]) && sign < 0)) result[i] = Single.MinValue;
+                if (Single.IsPositiveInfinity(result[i]) || (Single.IsNaN(result[i]) && sign > 0)) result[i] = Single.MaxValue;
+                else if (Single.IsNegativeInfinity(result[i]) || (Single.IsNaN(result[i]) && sign < 0)) result[i] = Single.MinValue;
             }
             return result;
         }

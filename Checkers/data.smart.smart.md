@@ -16,7 +16,7 @@ White goes first (down) and should win.
 
 #### Take-aways
  * The data suggests that the most common outcome for this configuration is a cats game.
- * Having a random loop inbetween two runs with a learning opponent helped to incrase the contexts seen.
+ * Having a random loop inbetween two runs with a learning opponent helped to increase the contexts seen.
  * With all 50 turns, Black was consistently winning.
  * There was a sweet spot at 24 turns where cats was most likely to occur. 
  * This method is more effective at finding more unique contexts as compared with Random (almost 2x at max moves of 14).

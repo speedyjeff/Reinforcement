@@ -31,7 +31,7 @@ White | Black
 -------|------
 34,982| 32,737
 
- * Trends to 100% black wins within 20,2000 iterations
+ * Trends to 100% black wins within 202,000 iterations
  * When playing against a random player, the learning oppnent will win >99% of the time
 
 #### Dimension: 6

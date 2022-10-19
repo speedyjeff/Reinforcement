@@ -2,31 +2,36 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace TicTacToe
+namespace Learning.Helpers
 {
-    internal class NeuralNetworkComputerStats
+    public class OutcomeStats
     {
-        public NeuralNetworkComputerStats()
+        public OutcomeStats(int maxLength = -1)
         {
-            All = new List<Details>();
+            Data = new List<Details>();
+            MaxLength = maxLength;
         }
 
         public void Add(int iteration, string context, int choice, float[] probabilities = null)
         {
-            All.Add(new Details()
+            // retain the data
+            Data.Add(new Details()
             {
                 Iteration = iteration,
                 Context = context,
                 Choice = choice,
                 Probabilities = probabilities
             });
+
+            // drop the first added
+            while (MaxLength > 0 && Data.Count >= MaxLength) Data.RemoveAt(0);
         }
 
         public void ToFile(string filename)
         {
             using (var output = File.CreateText(filename))
             {
-                foreach (var d in All)
+                foreach (var d in Data)
                 {
                     output.Write($"{d.Iteration}\t{d.Context}\t{d.Choice}");
                     if (d.Probabilities != null)
@@ -39,7 +44,8 @@ namespace TicTacToe
         }
 
         #region private
-        private List<Details> All;
+        private int MaxLength;
+        private List<Details> Data;
         private struct Details
         {
             public int Iteration;

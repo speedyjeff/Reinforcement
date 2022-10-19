@@ -26,22 +26,22 @@ public class CheckersGame
         var uniqueMoves = options.RetainUniqueGames ? new HashSet<string>() : null;
         var currentMoves = options.RetainUniqueGames ? new StringBuilder() : null;
 
-        // choose players
-        players[0] = ChoosePlayer(Side.White, options.Dimension, options.PlayerWhite, options.Reward, options.Learning, options.Discount);
-        players[1] = ChoosePlayer(Side.Black, options.Dimension, options.PlayerBlack, options.Reward, options.Learning, options.Discount);
-
         // choose how many iterations
-        Console.WriteLine("How many iterations:");
+        if (!options.Quiet || options.Iterations <= 0) Console.WriteLine("How many iterations:");
         if (options.Iterations > 0)
         {
             iterations = options.Iterations;
-            Console.WriteLine(iterations);
+            if (!options.Quiet) Console.WriteLine(iterations);
         }
         else
         {
             var input = Console.ReadLine();
             if (!Int32.TryParse(input, out iterations)) iterations = 1;
         }
+
+        // choose players
+        players[0] = ChoosePlayer(Side.White, iterations, options.PlayerWhite, options);
+        players[1] = ChoosePlayer(Side.Black, iterations, options.PlayerBlack, options);
 
         // check if there is an initial board configuration
         if (!string.IsNullOrWhiteSpace(options.InitBoardFile) && File.Exists(options.InitBoardFile))
@@ -62,8 +62,11 @@ public class CheckersGame
             // decide if learning values should be displayed
             if (options.ShowBoards || i == (iterations - 1))
             {
-                if (players[0] is SmartComputer) (players[0] as SmartComputer).IsDebug = true;
-                if (players[1] is SmartComputer) (players[1] as SmartComputer).IsDebug = true;
+                if (!options.Quiet)
+                {
+                    if (players[0] is SmartComputer) (players[0] as SmartComputer).IsDebug = true;
+                    if (players[1] is SmartComputer) (players[1] as SmartComputer).IsDebug = true;
+                }
             }
 
             // play
@@ -79,9 +82,11 @@ public class CheckersGame
                 else throw new Exception($"unknown side {board.Turn}");
 
                 // display
-                if (players[index] is Human || 
-                    options.ShowBoards ||
-                    i == (iterations-1)) Display(board);
+
+                if (players[index] is Human || options.ShowBoards || i == (iterations - 1))
+                {
+                    if (!options.Quiet) Display(board);
+                }
 
                 // get move
                 move = players[index].ChooseAction(board);
@@ -93,7 +98,8 @@ public class CheckersGame
                 }
 
                 // make the move
-                if (!board.TryMakeMove(move)) Console.WriteLine("move failed!");
+                if (!board.TryMakeMove(move)) 
+                    if (!options.Quiet) Console.WriteLine("move failed!");
             }
             while (!board.IsDone);
 
@@ -103,8 +109,11 @@ public class CheckersGame
                 options.ShowBoards ||
                 i == (iterations - 1))
             {
-                Console.WriteLine($"Outcome: {(board.Winner == Side.None ? "cats" : board.Winner)}");
-                Display(board);
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"Outcome: {(board.Winner == Side.None ? "cats" : board.Winner)}");
+                    Display(board);
+                }
             }
 
             // keep count of wins
@@ -113,7 +122,7 @@ public class CheckersGame
             else if (board.Winner == Side.None) winCount[2]++;
             else throw new Exception("Unknown winner");
 
-            Console.WriteLine($"wins : White [{winCount[0]}] Black [{winCount[1]}] Cats [{winCount[2]}]");
+            if (!options.Quiet) Console.WriteLine($"wins : White [{winCount[0]}] Black [{winCount[1]}] Cats [{winCount[2]}]");
 
             // keep a histogram of how many times it takes to win
             if (playCount < 0 || playCount >= turnHistogram.Length) throw new Exception("invalid playcount");
@@ -132,23 +141,29 @@ public class CheckersGame
         }
 
         // display play histogram
-        Console.WriteLine();
-        Console.WriteLine("Play histogram:");
-        for(int i=0; i<turnHistogram.Length; i++)
+        if (!options.Quiet)
         {
-            if (turnHistogram[i] > 0)
+            Console.WriteLine();
+            Console.WriteLine("Play histogram:");
+            for (int i = 0; i < turnHistogram.Length; i++)
             {
-                Console.WriteLine($"  {i} {turnHistogram[i]} {((double)turnHistogram[i] * 100) / (double)(iterations > 0 ? iterations : 1):f2}%");
+                if (turnHistogram[i] > 0)
+                {
+                    Console.WriteLine($"  {i} {turnHistogram[i]} {((double)turnHistogram[i] * 100) / (double)(iterations > 0 ? iterations : 1):f2}%");
+                }
             }
         }
 
+        // display the final results even if quiet
+        if (options.Quiet) Console.WriteLine($"{winCount[0]}\t{winCount[1]}\t{winCount[2]}");
+
         // save the models at the end
-        Console.WriteLine("Saving models to disk...");
-        if (players[0] is SmartComputer) (players[0] as SmartComputer).Save();
-        if (players[1] is SmartComputer) (players[1] as SmartComputer).Save();
+        if (!options.Quiet) Console.WriteLine("Saving models to disk...");
+        players[0].Save();
+        players[1].Save();
 
         // display all the unique moves that lead to an outcome
-        if (uniqueMoves != null)
+        if (uniqueMoves != null && !options.Quiet)
         {
             Console.WriteLine("List of all unique combinations that lead to an end result:");
             foreach (var moves in uniqueMoves) Console.WriteLine(moves);
@@ -158,15 +173,15 @@ public class CheckersGame
     }
 
     #region private
-    private static IPlayer ChoosePlayer(Side side, int dimension, string defaultChoice, double reward, double learning, double discount)
+    private static IPlayer ChoosePlayer(Side side, int iterations, string defaultChoice, Options options)
     {
         while (true)
         {
-            Console.Write($"who is playing {side} [(c)omputer or (h)uman]: ");
+            if (!options.Quiet || string.IsNullOrWhiteSpace(defaultChoice)) Console.Write($"who is playing {side} [(c)omputer | (h)uman | (r)andom | (p)suedo random | (n)eural]: ");
             var choice = "";
             if (!string.IsNullOrWhiteSpace(defaultChoice))
             {
-                Console.WriteLine(defaultChoice);
+                if (!options.Quiet) Console.WriteLine(defaultChoice);
                 choice = defaultChoice;
 
                 // clear default choice (only use once)
@@ -175,11 +190,22 @@ public class CheckersGame
             else choice = Console.ReadLine();
 
             if (string.IsNullOrWhiteSpace(choice)) continue;
-            else if (choice.StartsWith("r", StringComparison.OrdinalIgnoreCase)) return new RandomComputer();
+            else if (choice.StartsWith("r", StringComparison.OrdinalIgnoreCase)) return new RandomComputer(options.Seed);
             else if (choice.StartsWith("h", StringComparison.OrdinalIgnoreCase)) return new Human();
-            else if (choice.StartsWith("c", StringComparison.OrdinalIgnoreCase)) return new SmartComputer(side, dimension, reward, learning, discount);
+            else if (choice.StartsWith("c", StringComparison.OrdinalIgnoreCase)) return new SmartComputer(side, options.Dimension, options.Reward, options.Learning, options.Discount);
             else if (choice.StartsWith("p", StringComparison.OrdinalIgnoreCase)) return new PsuedoRandomComputer();
-            else if (choice.StartsWith("e", StringComparison.OrdinalIgnoreCase)) return new ExtensionSampleComputer(side, reward, learning, discount);
+            else if (choice.StartsWith("e", StringComparison.OrdinalIgnoreCase)) return new ExtensionSampleComputer(side, options.Reward, options.Learning, options.Discount);
+            else if (choice.StartsWith("n", StringComparison.OrdinalIgnoreCase)) return new NeuralComputer(side, options.Dimension, iterations, 
+                                                                                                                options: new NeuralComputerOptions()
+                                                                                                                {
+                                                                                                                    DumpStats = options.DumpStats,
+                                                                                                                    LSituations = (LearningSituations)options.LearningSituations[side == Side.White ? 0 : 1],
+                                                                                                                    LStyle = (LearningStyle)options.LearningStyle[side == Side.White ? 0 : 1],
+                                                                                                                    TStyle = (TrainingStyle)options.TrainingStyle,
+                                                                                                                    MaxTrainingPct = options.MaxTrainingPct,
+                                                                                                                    NoLearning = options.NoLearning,
+                                                                                                                    Seed = options.Seed
+                                                                                                                });
             else Console.WriteLine("** incorrect selection **");
         }
     }
@@ -225,6 +251,7 @@ public class CheckersGame
         // acceptable input: '-', 'w', 'W', 'b', 'B'
 
         var row = 0;
+        var count = 0;
         var coords = new List<Coordinate>();
 
         using (var reader = File.OpenText(filename))
@@ -256,10 +283,12 @@ public class CheckersGame
                         case 'w':
                         case 'W':
                             coord.Piece.Side = Side.White;
+                            count++;
                             break;
                         case 'b':
                         case 'B':
                             coord.Piece.Side = Side.Black;
+                            count++;
                             break;
                         default: 
                             Console.WriteLine($"unknow board part : {chr}");
@@ -274,9 +303,10 @@ public class CheckersGame
 
                 // advance row
                 row++;
-            }
-            
+            }   
         }
+
+        if (count == 0) throw new Exception("must provide a board that has at least 1 piece placed");
 
         return coords;
     }

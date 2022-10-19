@@ -8,9 +8,9 @@ namespace Checkers
 {
     internal class RandomComputer : IPlayer
     {
-        public RandomComputer()
+        public RandomComputer(int seed = 0)
         {
-            Rand = new System.Random();
+            Rand = seed == 0 ? new Random() : new Random(seed);
         }
 
         public Move ChooseAction(CheckersBoard board)
@@ -25,6 +25,10 @@ namespace Checkers
 
         public void Finish(CheckersBoard board, Side winner, Move lastMove)
         {
+        }
+
+        public void Save()
+        { 
         }
 
         #region private

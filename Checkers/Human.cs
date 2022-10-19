@@ -40,6 +40,10 @@ namespace Checkers
         {
         }
 
+        public void Save()
+        {
+        }
+
         #region private
         private static Direction TextToDirection(char chr)
         {

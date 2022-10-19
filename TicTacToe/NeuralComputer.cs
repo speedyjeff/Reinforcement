@@ -1,4 +1,5 @@
 ﻿using Learning;
+using Learning.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +26,7 @@ namespace TicTacToe
             // init
             Random = new RandomComputer();
             Steps = new List<Tuple<float[],int>>();
-            Stats = (maxIterations <= 100000) ? new NeuralNetworkComputerStats() : null;
+            Stats = (maxIterations <= 100000) ? new OutcomeStats() : null;
 
             // determine offsets for the input array for the neural network
             OffsetMine = 0;
@@ -95,9 +96,6 @@ namespace TicTacToe
 
         public void Finish(TicTacToeBoard board, Piece winningPiece, Coordinate lastCoordinate)
         {
-            // increment iteration
-            Iteration++;
-
             // if this was a win and we are training, then train
             if (Steps.Count > 0)
             {
@@ -124,6 +122,9 @@ namespace TicTacToe
                 Steps.Clear();
             }
 
+            // increment iteration
+            Iteration++;
+
             // check if this is the last one and dump the stats
             if (Iteration >= MaxIterations)
             {
@@ -137,7 +138,7 @@ namespace TicTacToe
         private int MaxIterations;
         private int Dimension;
         private NeuralNetwork Network;
-        private NeuralNetworkComputerStats Stats;
+        private OutcomeStats Stats;
 
         // related to board output
         private int OffsetMine;

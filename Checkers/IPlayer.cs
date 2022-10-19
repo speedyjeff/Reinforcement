@@ -10,5 +10,6 @@ namespace Checkers
     {
         Move ChooseAction(CheckersBoard board);
         void Finish(CheckersBoard board, Side winner, Move lastMove);
+        void Save();
     }
 }

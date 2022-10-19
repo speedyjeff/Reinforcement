@@ -87,6 +87,7 @@ namespace Learning.Tests
                 var labels = Dataset.Read(tmplabels);
                 var minput = images.Rows * images.Columns;
                 var moutput = 5;
+                var rand = new Random();
 
                 foreach (var hidden in new[]
                 {
@@ -108,8 +109,11 @@ namespace Learning.Tests
                         });
 
                     // train & learn
-                    var output = nn.Evaluate(images.Data[0]);
-                    nn.Learn(output, (int)labels.Data[0][0]);
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        var output = nn.Evaluate(images.Data[0]);
+                        nn.Learn(output, (int)labels.Data[0][rand.Next() % labels.Data[0].Length]);
+                    }
                 }
             }
             finally
@@ -165,6 +169,55 @@ namespace Learning.Tests
             {
                 if (File.Exists(tmpimages)) File.Delete(tmpimages);
                 if (File.Exists(tmplabels)) File.Delete(tmplabels);
+            }
+        }
+
+        public static void ForceNaN()
+        {
+            // make neural network that forces the overflow behavior (NaN/Infinity)
+            var network = new NeuralNetwork(new NeuralOptions()
+            {
+                InputNumber = 10,
+                OutputNumber = 100,
+                HiddenLayerNumber = new int[] { 64, 128, 256, 512, 256, 128, 64 },
+                MinibatchCount = 1,
+                LearningRate = 1f
+            });
+            var input = new float[] { 0.5f, 0.2f, 0.3f, 0f, 1f, 0.5f, -1f, -0.9f, 0.8f, -0.00001f };
+
+            // simulating when a calulation results in NaN/infinity
+            foreach (var v in new float[] { Single.NaN, Single.PositiveInfinity, Single.NegativeInfinity })
+            {
+                // change a value
+                input[0] = v;
+
+                // evaluate
+                var output = network.Evaluate(input);
+                network.Learn(output, 0);
+            }
+        }
+
+        public static void Perf()
+        {
+            // make neural network that forces the overflow behavior (NaN/Infinity)
+            var network = new NeuralNetwork(new NeuralOptions()
+            {
+                InputNumber = 32 * 5,
+                OutputNumber = 32 * 4,
+                HiddenLayerNumber = new int[] { 128, 256, 128 },
+                MinibatchCount = 1,
+                LearningRate = 0.00015f
+            });
+            var input = new float[network.InputNumber];
+            var rand = new Random();
+            for (int i = 0; i < input.Length; i++) input[i] = ((float)(rand.Next() % 2000) - 1000f) / 1000f;
+
+            // simulating when a calulation results in NaN/infinity
+            for (int i = 0; i < 1000; i++)
+            {
+                // evaluate
+                var output = network.Evaluate(input);
+                network.Learn(output, 0);
             }
         }
 
