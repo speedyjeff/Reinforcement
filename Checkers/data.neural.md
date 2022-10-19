@@ -116,7 +116,7 @@ The following were the most successful inceptive combinations.
  * DLoss, King, Capture, Oscillation (cats 77%)
  * DCats, DLoss, King, Capture (cats (74%)
 
-[checkers.loss.black](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.loss.black.png)
+![checkers.loss.black](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.loss.black.png)
 
 Based on the most successful runs, models that incentive kings and captures, and dis-incentive loosing pieces yielded the strongest models.
 
@@ -131,7 +131,7 @@ The following were the most successful inceptive combinations.
  * Win, Capture, Oscillation (cats 91%)
  * Win, Capture (cats 91%)
 
-[checkers.loss.white](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.loss.white.png)
+![checkers.loss.white](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.loss.white.png)
 
 Based on the most successful runs, models that incentive winning and captures, and dis-incentive oscillating pieces yielded the strongest models.
 
@@ -147,7 +147,7 @@ White winning was the least likely outcome.  The best neural network only won 48
  * DCats, DLoss, Loss, Capture, Oscillation (win 29%)
  * DCats, Capture (win 20%)
 
-[checkers.win.white](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.win.white.png)
+![checkers.win.white](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.win.white.png)
 
 Based on the most successful runs, models that incentive captures, and dis-incentive cats games yielded the strongest models. (-learningstyle 2 -learningsituations 4)
 
@@ -160,7 +160,7 @@ Black winning had a high probability, with the most successful model winning >64
  * Win, DCats, DLoss, Loss, King, Oscillation (win 64%)
  * DCats, DLoss, Oscillation (win 64%)
 
-[checkers.win.black](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.win.black.png)
+![checkers.win.black](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.win.black.png)
 
 Based on the most successful runs, models that incentive winning and kings, and dis-incentive cats and loosing pieces yielded the strongest models. (-learningstyle 3 -learningsituations 3)
 
@@ -173,7 +173,7 @@ Cats games were the most likely outcome.  For reference, two pseudo random agent
  * DLoss, Capture (cats 93%)
  * King (cats 92%)
 
-[checkers.loss.cats](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.loss.cats.png)
+![checkers.loss.cats](https://github.com/speedyjeff/Reinforcement/blob/main/Media/checkers.loss.cats.png)
 
 Based on the most successful runs, models that incentive captures and kings, and dis-incentive lossing a piece, losing, and oscillating yields the strongest model.
 
