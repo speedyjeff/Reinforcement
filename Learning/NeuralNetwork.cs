@@ -55,6 +55,7 @@ namespace Learning
         public float LearningRate;      // neural network learning rate (alpha) (eg. 0.15f)
         public int MinibatchCount;      // how many trainings should be applied per learning update (eg. 100)
                                         // (default 1)
+        public bool ParallizeExecution; // do work in parallel (default false)
     }
 
     public class NeuralNetwork
@@ -83,6 +84,7 @@ namespace Learning
             InputNumber = options.InputNumber;
             OutputNumber = options.OutputNumber;
             MinibatchCount = options.MinibatchCount;
+            ParallelizeWherePossible = options.ParallizeExecution;
 
             // initialize number of layers (input + hidden.Length + output - 1)
             Weight = new float[options.HiddenLayerNumber.Length + 1][][];
@@ -120,6 +122,7 @@ namespace Learning
         public int InputNumber { get; private set; }
         public int OutputNumber { get; private set; }
         public int MinibatchCount { get; private set; }
+        public bool ParallelizeWherePossible { get; private set; }
 
         public NeuralOutput Evaluate(float[] input)
         {
@@ -170,10 +173,12 @@ namespace Learning
                 // last round
                 //    Zn = [Weightn] dot [An-1] + [Biasn]
                 output.Z[layer] = new float[Weight[layer].Length];
-                Parallel.For(fromInclusive: 0, toExclusive: Weight[layer].Length, (neuron) =>
-                {
-                    output.Z[layer][neuron] = Dot(Weight[layer][neuron], (layer == 0) ? input : output.A[layer - 1]) + Bias[layer][neuron][0];
-                });
+                var func = (int neuron) => 
+                { 
+                    output.Z[layer][neuron] = Dot(Weight[layer][neuron], (layer == 0) ? input : output.A[layer - 1]) + Bias[layer][neuron][0]; 
+                };
+                if (ParallelizeWherePossible) Parallel.For(fromInclusive: 0, toExclusive: Weight[layer].Length, func);
+                else for (var neuron = 0; neuron < Weight[layer].Length; neuron++) func(neuron);
 
                 // first round
                 //    A0 = ReLU(Z0)
@@ -312,7 +317,7 @@ namespace Learning
                     // average the updates
                     foreach(var u in Updates)
                     {
-                        Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, (layer) =>
+                        var ifunc = (int layer) =>
                         {
                             // bias'
                             if (agg.dB[layer] == null) agg.dB[layer] = new float[u.dB[layer].Length];
@@ -325,11 +330,13 @@ namespace Learning
                                 if (agg.dW[layer][j] == null) agg.dW[layer][j] = new float[u.dW[layer][j].Length];
                                 for (var k = 0; k < u.dW[layer][j].Length; k++) agg.dW[layer][j][k] += u.dW[layer][j][k];
                             }
-                        });
+                        };
+                        if (ParallelizeWherePossible) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, ifunc);
+                        else for (int layer = 0; layer < Weight.Length; layer++) ifunc(layer);
                     }
 
                     // update the weights and bias'
-                    Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, (layer) =>
+                    var func = (int layer) =>
                     {
                         for (int neuron = 0; neuron < Weight[layer].Length; neuron++)
                         {
@@ -339,7 +346,9 @@ namespace Learning
                             // B = B - alpha * dB
                             Bias[layer][neuron][0] = Bias[layer][neuron][0] - ((LearningRate / (float)Updates.Count) * agg.dB[layer][neuron]);
                         }
-                    });
+                    };
+                    if (ParallelizeWherePossible) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, func);
+                    else for (int layer = 0; layer < Weight.Length; layer++) func(layer);
 
                     // clear
                     Updates.Clear();
@@ -359,6 +368,7 @@ namespace Learning
                 writer.WriteLine($"InputNumber\t{InputNumber}");
                 writer.WriteLine($"OutputNumber\t{OutputNumber}");
                 writer.WriteLine($"MinibatchCount\t{MinibatchCount}");
+                writer.WriteLine($"ParallelizeWherePossible\t{ParallelizeWherePossible}");
                 writer.WriteLine($"Weight\t{Weight.Length}");
                 for (int i = 0; i < Weight.Length; i++)
                 {
@@ -410,6 +420,7 @@ namespace Learning
                         case "InputNumber": network.InputNumber = Convert.ToInt32(parts[1]); break;
                         case "OutputNumber": network.OutputNumber = Convert.ToInt32(parts[1]); break;
                         case "MinibatchCount": network.MinibatchCount = Convert.ToInt32(parts[1]); break;
+                        case "ParallelizeWherePossible": network.ParallelizeWherePossible = Convert.ToBoolean(parts[1]); break;
                         case "Weight":
                             // init for Weight
                             if (parts.Length == 2)
