@@ -60,12 +60,6 @@ namespace Learning
 
     public class NeuralNetwork
     {
-        public NeuralNetwork()
-        {
-            // init
-            Updates = new List<NeuralUpdate>();
-        }
-
         public NeuralNetwork(NeuralOptions options) : this()
         {
             // validate options
@@ -84,7 +78,7 @@ namespace Learning
             InputNumber = options.InputNumber;
             OutputNumber = options.OutputNumber;
             MinibatchCount = options.MinibatchCount;
-            ParallelizeWherePossible = options.ParallizeExecution;
+            ParallizeExecution = options.ParallizeExecution;
 
             // initialize number of layers (input + hidden.Length + output - 1)
             Weight = new float[options.HiddenLayerNumber.Length + 1][][];
@@ -122,7 +116,7 @@ namespace Learning
         public int InputNumber { get; private set; }
         public int OutputNumber { get; private set; }
         public int MinibatchCount { get; private set; }
-        public bool ParallelizeWherePossible { get; private set; }
+        public bool ParallizeExecution { get; private set; }
 
         public NeuralOutput Evaluate(float[] input)
         {
@@ -177,7 +171,7 @@ namespace Learning
                 { 
                     output.Z[layer][neuron] = Dot(Weight[layer][neuron], (layer == 0) ? input : output.A[layer - 1]) + Bias[layer][neuron][0]; 
                 };
-                if (ParallelizeWherePossible) Parallel.For(fromInclusive: 0, toExclusive: Weight[layer].Length, func);
+                if (ParallizeExecution) Parallel.For(fromInclusive: 0, toExclusive: Weight[layer].Length, func);
                 else for (var neuron = 0; neuron < Weight[layer].Length; neuron++) func(neuron);
 
                 // first round
@@ -331,7 +325,7 @@ namespace Learning
                                 for (var k = 0; k < u.dW[layer][j].Length; k++) agg.dW[layer][j][k] += u.dW[layer][j][k];
                             }
                         };
-                        if (ParallelizeWherePossible) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, ifunc);
+                        if (ParallizeExecution) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, ifunc);
                         else for (int layer = 0; layer < Weight.Length; layer++) ifunc(layer);
                     }
 
@@ -347,7 +341,7 @@ namespace Learning
                             Bias[layer][neuron][0] = Bias[layer][neuron][0] - ((LearningRate / (float)Updates.Count) * agg.dB[layer][neuron]);
                         }
                     };
-                    if (ParallelizeWherePossible) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, func);
+                    if (ParallizeExecution) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, func);
                     else for (int layer = 0; layer < Weight.Length; layer++) func(layer);
 
                     // clear
@@ -368,7 +362,6 @@ namespace Learning
                 writer.WriteLine($"InputNumber\t{InputNumber}");
                 writer.WriteLine($"OutputNumber\t{OutputNumber}");
                 writer.WriteLine($"MinibatchCount\t{MinibatchCount}");
-                writer.WriteLine($"ParallelizeWherePossible\t{ParallelizeWherePossible}");
                 writer.WriteLine($"Weight\t{Weight.Length}");
                 for (int i = 0; i < Weight.Length; i++)
                 {
@@ -400,6 +393,52 @@ namespace Learning
             }
         }
 
+        public static NeuralNetwork Load(NeuralNetwork other)
+        {
+            // load
+            var network = new NeuralNetwork();
+            
+            // attributes
+            network.LearningRate = other.LearningRate;
+            network.InputNumber = other.InputNumber;
+            network.OutputNumber = other.OutputNumber;
+            network.MinibatchCount = other.MinibatchCount;
+            network.ParallizeExecution = other.ParallizeExecution;
+
+            // copy weight's
+            network.Weight = new float[other.Weight.Length][][];
+            for (int i = 0; i < other.Weight.Length; i++)
+            {
+                network.Weight[i] = new float[other.Weight[i].Length][];
+                for (int j = 0; j < other.Weight[i].Length; j++)
+                {
+                    network.Weight[i][j] = new float[other.Weight[i][j].Length];
+                    for (int k = 0; k < other.Weight[i][j].Length; k++)
+                    {
+                        network.Weight[i][j][k] = other.Weight[i][j][k];
+                    }
+                }
+            }
+
+            // copy bias'
+            network.Bias = new float[other.Bias.Length][][];
+            for (int i = 0; i < other.Bias.Length; i++)
+            {
+                network.Bias[i] = new float[other.Bias[i].Length][];
+                for (int j = 0; j < other.Bias[i].Length; j++)
+                {
+                    network.Bias[i][j] = new float[other.Bias[i][j].Length];
+                    for (int k = 0; k < other.Bias[i][j].Length; k++)
+                    {
+                        network.Bias[i][j][k] = other.Bias[i][j][k];
+                    }
+                }
+            }
+
+            // return the copied network
+            return network;
+        }
+
         public static NeuralNetwork Load(string filename)
         {
             // load
@@ -420,7 +459,6 @@ namespace Learning
                         case "InputNumber": network.InputNumber = Convert.ToInt32(parts[1]); break;
                         case "OutputNumber": network.OutputNumber = Convert.ToInt32(parts[1]); break;
                         case "MinibatchCount": network.MinibatchCount = Convert.ToInt32(parts[1]); break;
-                        case "ParallelizeWherePossible": network.ParallelizeWherePossible = Convert.ToBoolean(parts[1]); break;
                         case "Weight":
                             // init for Weight
                             if (parts.Length == 2)
@@ -479,6 +517,12 @@ namespace Learning
         }
 
         #region private
+        // constructor for Load
+        private NeuralNetwork()
+        {
+            // init
+            Updates = new List<NeuralUpdate>();
+        }
 
         // example
         //  10 input, 16 hidden layer, 5 outputs
