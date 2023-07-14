@@ -82,7 +82,7 @@ namespace TicTacToe
                 {
                     Console.WriteLine(board.ToString());
                     if (winningPiece == Piece.Empty) Console.WriteLine("Cats game!");
-                    else Console.WriteLine($"Congradulations {winningPiece}, you win!");
+                    else Console.WriteLine($"Congratulations {winningPiece}, you win!");
                 }
                 else
                 {
