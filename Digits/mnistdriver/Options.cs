@@ -53,7 +53,13 @@ namespace mnistdriver
                 ShowHelp = false,
                 Iterations = 1,
                 Quiet = false,
-                Split = 0
+                Split = 0,
+                NoTrain = false,
+                Unsupervised = false,
+                NoSave = false,
+                ImagePath = "",
+                LabelPath = "",
+                ModelPath = ""
             };
 
             // parse

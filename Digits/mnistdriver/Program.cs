@@ -38,7 +38,7 @@ namespace mnistdriver
                 return -2;
             }
 
-            // either load or initalize the model
+            // either load or initialize the model
             NeuralNetwork network = null;
             if (File.Exists(options.ModelPath))
             {
@@ -56,7 +56,7 @@ namespace mnistdriver
                 {
                     // todo hidden network checks
                     if (network.LearningRate != options.LearningRate) Console.WriteLine("warn! the loaded models learning rate does not match");
-                    if (network.MinibatchCount != options.MinibatchSize) Console.WriteLine("warn! the loadd models mini batch size does not match");
+                    if (network.MinibatchCount != options.MinibatchSize) Console.WriteLine("warn! the loaded models mini batch size does not match");
                     if (network.InputNumber != (images.Rows * images.Columns) ||
                         network.OutputNumber != 10)
                     {
@@ -189,10 +189,6 @@ namespace mnistdriver
         {
             var stats = new Stats();
 
-            // this round stats
-            var ltotal = 0;
-            var lpass = 0;
-
             // execute iterations times
             for (int iteration = 0; iteration < options.Iterations; iteration++)
             {
@@ -203,6 +199,9 @@ namespace mnistdriver
 
                 // run
                 timer.Start();
+                // this round stats
+                var ltotal = 0;
+                var lpass = 0;
                 foreach (var i in indexes)
                 {
                     // run
@@ -218,13 +217,13 @@ namespace mnistdriver
                     else stats.Fail++;
                 }
                 timer.Stop();
-                stats.Times.Add((float)timer.ElapsedMilliseconds / (float)images.Count);
+                stats.Times.Add((float)timer.ElapsedMilliseconds / (float)ltotal);
 
-                if (!options.Quiet) Console.WriteLine($"{iteration} : {lpass} {(float)(lpass*100) / (float)ltotal}% {(float)timer.ElapsedMilliseconds / (float)images.Count}ms");
+                if (!options.Quiet) Console.WriteLine($"{iteration} : {lpass} {(float)(lpass*100) / (float)ltotal}% {(float)timer.ElapsedMilliseconds / (float)ltotal}ms");
+
+                // flush any pending learning
+                network.ForceUpdate();
             }
-
-            // flush any pending learning
-            network.ForceUpdate();
 
             // display stats
             if (!options.Quiet) stats.Display();

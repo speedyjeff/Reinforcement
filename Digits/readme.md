@@ -64,5 +64,5 @@ Here is some additional data on how these configurations influence the overall m
 Download all 4 gz mnist dataset [here](http://yann.lecun.com/exdb/mnist).  The program will unzip and read the data, so nothing beyond downloading is necessary.
 
 ```
-./mnistdriver.exe -image train-images-idx3-ubyte.gz -label train-labels-idx1-ubyte.gz -hidden 10 -mini 1 -learn 0.15 -it 1 -split 0.2
+./mnistdriver.exe -image train-images-idx3-ubyte.gz -label train-labels-idx1-ubyte.gz -hidden 16,16 -mini 100 -learn 0.15 -it 10 -split 0.2
 ```

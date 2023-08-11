@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 
-// A lot of reference matreial was used to generate this code.  Here are a few of the most useful materials I found.
+// A lot of reference material was used to generate this code.  Here are a few of the most useful materials I found.
 //   https://en.wikipedia.org/wiki/Mathematics_of_artificial_neural_networks
 //   https://www.youtube.com/watch?v=aircAruvnKk (series of videos)
 //   http://neuralnetworksanddeeplearning.com/index.html
@@ -73,13 +72,6 @@ namespace Learning
                 if (options.HiddenLayerNumber[i] <= 0) throw new Exception($"hidden layer {i} must be a positive number");
             }
 
-            // initialize
-            LearningRate = options.LearningRate;
-            InputNumber = options.InputNumber;
-            OutputNumber = options.OutputNumber;
-            MinibatchCount = options.MinibatchCount;
-            ParallizeExecution = options.ParallizeExecution;
-
             // initialize number of layers (input + hidden.Length + output - 1)
             Weight = new float[options.HiddenLayerNumber.Length + 1][][];
             Bias = new float[options.HiddenLayerNumber.Length + 1][][];
@@ -110,6 +102,8 @@ namespace Learning
                     }
                 }
             }
+
+            Initialize(options);
         }
 
         public float LearningRate { get; private set; }
@@ -120,7 +114,7 @@ namespace Learning
 
         public NeuralOutput Evaluate(float[] input)
         {
-            // forward propogate
+            // forward propagate
 
             // validate
             if (input == null || input.Length != InputNumber) throw new Exception("invalid input");
@@ -131,7 +125,7 @@ namespace Learning
                 // result
                 Result = -1,
 
-                // internal details needed for backward propogate
+                // internal details needed for backward propagate
                 Input = new float[input.Length],
                 Z = new float[Weight.Length][],
                 A = new float[Weight.Length][]
@@ -140,7 +134,7 @@ namespace Learning
             // save input
             Array.Copy(input, output.Input, input.Length);
 
-            // Highlevel: 
+            // High level: 
             //  Each neuron in layer 1 is connected to each neuron in layer 2, 
             //  and each neuron in layer 2 is connected to each neuron in layer 3,
             //  and so on.
@@ -206,31 +200,31 @@ namespace Learning
         {
             if (preferredResult < 0 || preferredResult >= OutputNumber) throw new Exception("invalid preferred result");
             // create the output array with the right element set
-            var preferredResuts = new float[OutputNumber];
-            preferredResuts[preferredResult] = 1f;
+            var preferredResults = new float[OutputNumber];
+            preferredResults[preferredResult] = 1f;
             // learn
-            Learn(output, preferredResuts);
+            Learn(output, preferredResults);
         }
 
-        public void Learn(NeuralOutput output, float[] preferredResuts)
+        public void Learn(NeuralOutput output, float[] preferredResults)
         { 
-            // backward propogate
+            // backward propagate
 
             // validate
             if (output.Result < 0 || output.Result >= OutputNumber ||
                 output.Input == null || output.A == null || output.Z == null ||
                 output.Input.Length != InputNumber) throw new Exception("invalid output");
-            if (preferredResuts == null || preferredResuts.Length != OutputNumber) throw new Exception("invalid preferred results");
- 
-            // highlevel:
-            //  compute the partial deriviatives of
+            if (preferredResults == null || preferredResults.Length != OutputNumber) throw new Exception("invalid preferred results");
+
+            // high level:
+            //  compute the partial derivatives of
             //    dC/dweight and dC/dbias
             //    where C = (y-An)^2 (where Y is the best outcome)
-            //  looking for local minimum of the complext function - Gradient descent
+            //  looking for local minimum of the complex function - Gradient descent
             // error = dC/dAn*dReLU(Zn)
             //  measures how much C changes at An (dC/dAn) and how much the activation function changes at Zn
             // update the weights and bias' to learn for the next round (per mini batch).
-            // The algorith works backwards from the last layer to the first (as the name suggests)
+            // The algorithm works backwards from the last layer to the first (as the name suggests)
 
             /*
              Formulas
@@ -246,108 +240,68 @@ namespace Learning
             var layer = Weight.Length - 1;
             float[] dZlast;
 
-            // gather update data
-            var update = new NeuralUpdate()
-            {
-                dW = new float[Weight.Length][][],
-                dB = new float[Weight.Length][]
-            };
-
             // create the output array with the right element set
-            var Y = preferredResuts;
+            var Y = preferredResults;
 
             // float[] dZ = 2 * (A - Y)
-            dZlast = Multiply(2f, Subtract(output.A[layer], Y));
+            dZlast = Subtract(output.A[layer], Y);
+            Multiply(2f, ref dZlast);
 
-            // float[][] dW = dZ * A(-1)
-            update.dW[layer] = DotSecondParamT(dZlast, output.A[layer - 1]);
+            // float[][] dW = dZ * A(-1)T
+            DotSecondParamT(dZlast, output.A[layer - 1], ref AggregatedUpdate.dW[layer]);
 
-            // float dB = dZ
-            update.dB[layer] = new float[dZlast.Length];
-            Array.Copy(dZlast, update.dB[layer], dZlast.Length);
+            // float dB = dZ (update the aggregated updates)
+            for (int i=0; i<dZlast.Length; i++) AggregatedUpdate.dB[layer][i] += dZlast[i];
 
             // compute the rest in context of these values, backwards
             for (layer = Weight.Length - 2; layer >= 0; layer--)
             {
                 // float[] dZcurrent = W(+1).T dot dZlast * g`(Z)
-                var dZcurrent = new float[Weight[layer].Length];
-                dZcurrent = DotFirstParamT(Weight[layer + 1], dZlast);
-                dZcurrent = Multiply(dZcurrent, dOfReLU(output.Z[layer]));
+                var dZcurrent = DotFirstParamT(Weight[layer + 1], dZlast);
+                Multiply(ref dZcurrent, dOfReLU(output.Z[layer]));
 
-                // float[][] dW = dZ dot A(-1)
-                update.dW[layer] = DotSecondParamT(dZcurrent, (layer == 0) ? output.Input : output.A[layer - 1]);
+                // float[][] dW = dZ dot A(-1)T
+                DotSecondParamT(dZcurrent, (layer == 0) ? output.Input : output.A[layer - 1], ref AggregatedUpdate.dW[layer]);
 
-                // float dB = dZ
-                update.dB[layer] = new float[dZcurrent.Length];
-                Array.Copy(dZcurrent, update.dB[layer], dZcurrent.Length);
+                // float dB = dZ (update the aggregated updates)
+                for (int i = 0; i < dZcurrent.Length; i++) AggregatedUpdate.dB[layer][i] += dZcurrent[i];
 
                 // pass dZcurrent calculation to next layer
                 dZlast = dZcurrent;
             }
 
-            // add update
-            lock(Updates)
-            {
-                Updates.Add(update);
-            }
             // check if we need to do an update
-            if (Updates.Count >= MinibatchCount) ForceUpdate();
+            if (++UpdateCount >= MinibatchCount) ForceUpdate();
         }
 
         public void ForceUpdate()
         {
             // check if there is work to do
-            if (Updates.Count > 0)
+            if (UpdateCount > 0)
             {
-                lock (Updates)
+                // update the weights and bias'
+                var func = (int layer) =>
                 {
-                    // accumulate the update values
-                    var agg = new NeuralUpdate()
+                    for (int neuron = 0; neuron < Weight[layer].Length; neuron++)
                     {
-                        dW = new float[Weight.Length][][],
-                        dB = new float[Bias.Length][]
-                    };
+                        // W = W - alpha * dW
+                        Multiply(LearningRate / (float)UpdateCount, ref AggregatedUpdate.dW[layer][neuron]);
+                        Subtract(ref Weight[layer][neuron], AggregatedUpdate.dW[layer][neuron]);
+                        // clear
+                        for (int i = 0; i < AggregatedUpdate.dW[layer][neuron].Length; i++) AggregatedUpdate.dW[layer][neuron][i] = 0f;
 
-                    // average the updates
-                    foreach(var u in Updates)
-                    {
-                        var ifunc = (int layer) =>
-                        {
-                            // bias'
-                            if (agg.dB[layer] == null) agg.dB[layer] = new float[u.dB[layer].Length];
-                            for (var j = 0; j < u.dB[layer].Length; j++) agg.dB[layer][j] += u.dB[layer][j];
-
-                            // weights
-                            if (agg.dW[layer] == null) agg.dW[layer] = new float[u.dW[layer].Length][];
-                            for (var j = 0; j < u.dW[layer].Length; j++)
-                            {
-                                if (agg.dW[layer][j] == null) agg.dW[layer][j] = new float[u.dW[layer][j].Length];
-                                for (var k = 0; k < u.dW[layer][j].Length; k++) agg.dW[layer][j][k] += u.dW[layer][j][k];
-                            }
-                        };
-                        if (ParallizeExecution) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, ifunc);
-                        else for (int layer = 0; layer < Weight.Length; layer++) ifunc(layer);
+                        // B = B - alpha * dB
+                        Bias[layer][neuron][0] = Bias[layer][neuron][0] - ((LearningRate / (float)UpdateCount) * AggregatedUpdate.dB[layer][neuron]);
+                        // clear
+                        AggregatedUpdate.dB[layer][neuron] = 0f;
                     }
+                };
+                if (ParallizeExecution) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, func);
+                else for (int layer = 0; layer < Weight.Length; layer++) func(layer);
 
-                    // update the weights and bias'
-                    var func = (int layer) =>
-                    {
-                        for (int neuron = 0; neuron < Weight[layer].Length; neuron++)
-                        {
-                            // W = W - alpha * dW
-                            Weight[layer][neuron] = Subtract(Weight[layer][neuron], Multiply(LearningRate / (float)Updates.Count, agg.dW[layer][neuron]));
-
-                            // B = B - alpha * dB
-                            Bias[layer][neuron][0] = Bias[layer][neuron][0] - ((LearningRate / (float)Updates.Count) * agg.dB[layer][neuron]);
-                        }
-                    };
-                    if (ParallizeExecution) Parallel.For(fromInclusive: 0, toExclusive: Weight.Length, func);
-                    else for (int layer = 0; layer < Weight.Length; layer++) func(layer);
-
-                    // clear
-                    Updates.Clear();
-                } // lock(Updates)
-            } // if (Updates.Count > 0)
+                // clear
+                UpdateCount = 0;
+            } // if (UpdateCount > 0)
         }
 
         public void Save(string filename)
@@ -397,13 +351,6 @@ namespace Learning
         {
             // load
             var network = new NeuralNetwork();
-            
-            // attributes
-            network.LearningRate = other.LearningRate;
-            network.InputNumber = other.InputNumber;
-            network.OutputNumber = other.OutputNumber;
-            network.MinibatchCount = other.MinibatchCount;
-            network.ParallizeExecution = other.ParallizeExecution;
 
             // copy weight's
             network.Weight = new float[other.Weight.Length][][];
@@ -435,6 +382,16 @@ namespace Learning
                 }
             }
 
+            // complete initialization
+            network.Initialize(new NeuralOptions()
+                {
+                    LearningRate = other.LearningRate,
+                    InputNumber = other.InputNumber,
+                    OutputNumber = other.OutputNumber,
+                    MinibatchCount = other.MinibatchCount,
+                    ParallizeExecution = other.ParallizeExecution
+                });
+
             // return the copied network
             return network;
         }
@@ -443,6 +400,7 @@ namespace Learning
         {
             // load
             var network = new NeuralNetwork();
+            var options = new NeuralOptions();
 
             using (var reader = File.OpenText(filename))
             {
@@ -455,10 +413,10 @@ namespace Learning
                     if (parts.Length < 2) throw new Exception("line too short");
                     switch (parts[0])
                     {
-                        case "LearningRate": network.LearningRate = Convert.ToSingle(parts[1]); break;
-                        case "InputNumber": network.InputNumber = Convert.ToInt32(parts[1]); break;
-                        case "OutputNumber": network.OutputNumber = Convert.ToInt32(parts[1]); break;
-                        case "MinibatchCount": network.MinibatchCount = Convert.ToInt32(parts[1]); break;
+                        case "LearningRate": options.LearningRate = Convert.ToSingle(parts[1]); break;
+                        case "InputNumber": options.InputNumber = Convert.ToInt32(parts[1]); break;
+                        case "OutputNumber": options.OutputNumber = Convert.ToInt32(parts[1]); break;
+                        case "MinibatchCount": options.MinibatchCount = Convert.ToInt32(parts[1]); break;
                         case "Weight":
                             // init for Weight
                             if (parts.Length == 2)
@@ -513,17 +471,13 @@ namespace Learning
                 }
             }
 
+            // complete initialization
+            network.Initialize(options);
+
             return network;
         }
 
         #region private
-        // constructor for Load
-        private NeuralNetwork()
-        {
-            // init
-            Updates = new List<NeuralUpdate>();
-        }
-
         // example
         //  10 input, 16 hidden layer, 5 outputs
         //
@@ -562,9 +516,37 @@ namespace Learning
             public float[][][] dW;
             public float[][] dB;
         }
-        private List<NeuralUpdate> Updates;
+        //private List<NeuralUpdate> Updates;
+        private int UpdateCount;
+        private NeuralUpdate AggregatedUpdate;
 
-        private float GetRandom(RandomNumberGenerator rand)
+        private void Initialize(NeuralOptions options)
+        {
+            // initialize
+            LearningRate = options.LearningRate;
+            InputNumber = options.InputNumber;
+            OutputNumber = options.OutputNumber;
+            MinibatchCount = options.MinibatchCount;
+            ParallizeExecution = options.ParallizeExecution;
+
+            // used for updates
+            AggregatedUpdate = new NeuralUpdate()
+            {
+                dW = new float[Weight.Length][][],
+                dB = new float[Bias.Length][]
+            };
+            for (var i = 0; i < AggregatedUpdate.dW.Length; i++)
+            {
+                AggregatedUpdate.dW[i] = new float[Weight[i].Length][];
+                AggregatedUpdate.dB[i] = new float[Bias[i].Length];
+                for (var j = 0; j < AggregatedUpdate.dW[i].Length; j++)
+                {
+                    AggregatedUpdate.dW[i][j] = new float[Weight[i][j].Length];
+                }
+            }
+        }
+
+        private static float GetRandom(RandomNumberGenerator rand)
         {
             var int32buffer = new byte[4];
             rand.GetNonZeroBytes(int32buffer);
@@ -574,27 +556,38 @@ namespace Learning
             // get a random float between -0.5 and 0.5
             return ((float)number / (float)Int32.MaxValue) - 0.5f;
         }
+        #endregion
 
-        private float[] ReLU(float[] a)
+        #region protected
+        // protected to enable testing
+
+        // constructor for Load
+        protected NeuralNetwork()
+        {
+            // init
+            //Updates = new List<NeuralUpdate>();
+        }
+
+        protected static float[] ReLU(float[] a)
         {
             // if x <= 0 : 0
             //    x >  0 : x
             var result = new float[a.Length];
-            for (int i = 0; i < a.Length; i++) result[i] = Math.Max(0, a[i]);
+            for (int i = 0; i < a.Length; i++) result[i] = Math.Max(0f, a[i]);
             return result;
         }
 
-        private float[] dOfReLU(float[] a)
+        protected static float[] dOfReLU(float[] a)
         {
-            // deriviative of ReLU
+            // derivative of ReLU
             // if x <= 0 : 0
             //    x >  0 : 1
             var result = new float[a.Length];
-            for (int i = 0; i < a.Length; i++) result[i] = a[i] > 0 ? 1 : 0;
+            for (int i = 0; i < a.Length; i++) result[i] = (a[i] > 0 ? 1 : 0);
             return result;
         }
 
-        private float[] Softmax(float[] a)
+        protected static float[] Softmax(float[] a)
         {
             // = foreach(var x in a) r += e^(x-max) / sum(e^x-max)
             var sum = 0f;
@@ -615,12 +608,12 @@ namespace Learning
             return result;
         }
 
-        private float Dot(float[] a, float[] b)
+        protected static float Dot(float[] a, float[] b)
         {
             if (a.Length != b.Length) throw new Exception("lengths must match");
             var result = 0f;
             var sign = 1;
-            for(int i=0; i<a.Length && i<b.Length; i++)
+            for(int i=0; i<a.Length; i++)
             {
                 result += (a[i] * b[i]);
 
@@ -639,7 +632,7 @@ namespace Learning
             return result;
         }
 
-        private float[] DotFirstParamT(float[][] a, float[] b)
+        protected static float[] DotFirstParamT(float[][] a, float[] b)
         {
             if (a == null || a.Length == 0 ||
                 a.Length != b.Length) throw new Exception("invalid array lengths");
@@ -671,23 +664,29 @@ namespace Learning
             return result;
         }
 
-        private float[][] DotSecondParamT(float[] a, float[] b)
+        protected static void DotSecondParamT(float[] a, float[] b, ref float[][] result)
         {
             // fake [[],[],[]] dot [[,,,]]
             // second parameter is transposed
-            var result = new float[a.Length][];
             for (int i = 0; i < result.Length; i++)
             {
-                result[i] = new float[b.Length];
                 for (int j = 0; j < result[i].Length; j++)
                 {
-                    result[i][j] = a[i] * b[j];
+                    result[i][j] += a[i] * b[j];
                 }
             }
-            return result;
         }
 
-        private float[] Subtract(float[] a, float[] b)
+        protected static void Subtract(ref float[] a, float[] b)
+        {
+            if (a.Length != b.Length) throw new Exception("lengths must match");
+            for (int i = 0; i < a.Length && i < b.Length; i++)
+            {
+                a[i] = (a[i] - b[i]);
+            }
+        }
+
+        protected static float[] Subtract(float[] a, float[] b)
         {
             if (a.Length != b.Length) throw new Exception("lengths must match");
             var result = new float[a.Length];
@@ -698,25 +697,21 @@ namespace Learning
             return result;
         }
 
-        private float[] Multiply(float value, float[] a)
+        protected static void Multiply(float value, ref float[] a)
         {
-            var result = new float[a.Length];
             for(int i=0; i<a.Length; i++)
             {
-                result[i] = a[i] * value;
+                a[i] = a[i] * value;
             }
-            return result;
         }
 
-        private float[] Multiply(float[] a, float[] b)
+        protected static void Multiply(ref float[] a, float[] b)
         {
             if (a.Length != b.Length) throw new Exception("lengths must match");
-            var result = new float[a.Length];
             for (int i = 0; i < a.Length && i < b.Length; i++)
             {
-                result[i] = a[i] * b[i];
+                a[i] = a[i] * b[i];
             }
-            return result;
         }
         #endregion
     }
