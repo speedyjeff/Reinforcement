@@ -546,9 +546,10 @@ namespace Learning
             }
         }
 
-        private static float GetRandom(RandomNumberGenerator rand)
+        private unsafe static float GetRandom(RandomNumberGenerator rand)
         {
-            var int32buffer = new byte[4];
+            var array = stackalloc byte[4];
+            var int32buffer = new Span<byte>(array, 4);
             rand.GetNonZeroBytes(int32buffer);
             // ensure positive
             int32buffer[3] &= 0x7f;
