@@ -33,7 +33,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CartPoleDriver", "CartPole\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CartPole.Tests", "CartPole\CartPole.Tests\CartPole.Tests.csproj", "{2F6A05DB-39F2-45EE-B1B0-873EB077B51F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeeGame", "TeeGame\TeeGame.csproj", "{1B66756C-153D-4FD8-B012-63B57E56EB79}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TeeGame", "TeeGame\TeeGame.csproj", "{1B66756C-153D-4FD8-B012-63B57E56EB79}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Booop", "Booop\Booop.csproj", "{EA50E0DE-8432-40E8-9747-CE4C8CC9810D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -97,6 +99,10 @@ Global
 		{1B66756C-153D-4FD8-B012-63B57E56EB79}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1B66756C-153D-4FD8-B012-63B57E56EB79}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1B66756C-153D-4FD8-B012-63B57E56EB79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA50E0DE-8432-40E8-9747-CE4C8CC9810D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA50E0DE-8432-40E8-9747-CE4C8CC9810D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA50E0DE-8432-40E8-9747-CE4C8CC9810D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA50E0DE-8432-40E8-9747-CE4C8CC9810D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
