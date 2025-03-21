@@ -19,6 +19,8 @@ namespace CartPoleDriver
         public int[] NNHidden { get; set; }
         public int NNMinibatch { get; set; }
         public int AllIterations { get; set; }
+        public int NNWeightInit { get; set; }
+        public int NNBiasInit { get; set; }
 
         public void DisplayHelp()
         {
@@ -38,6 +40,8 @@ namespace CartPoleDriver
             Console.WriteLine("  -nnlearning #.##    - Neural only: learning rate (default 0.15)");
             Console.WriteLine("  -nnhidden ##[,##,.] - Neural only: list of dimentions for the hidden layers (default 16,16)");
             Console.WriteLine("  -nnminibatch ###    - Neural only: mini batch size (default 100)");
+            Console.WriteLine("  -nnweightinit ###     - Neural only: weight initialization (default 0)");
+            Console.WriteLine("  -nnbiasinit ###       - Neural only: bias initialization (default 0)");
             Console.WriteLine("  -alliterations      - All only: the models are trained with iteration iterations, this is how many to watch (default 1)");
         }
 
@@ -53,7 +57,9 @@ namespace CartPoleDriver
                 NNSplit = 0.8f,
                 NNLearning = 0.15f,
                 NNHidden = new int[] {16,16},
-                NNMinibatch = 100
+                NNMinibatch = 100,
+                NNWeightInit = 0,
+                NNBiasInit = 0
             };
 
             for(int i=0; i<args.Length; i++)
@@ -98,6 +104,14 @@ namespace CartPoleDriver
                 else if (args[i].StartsWith("-nnm", StringComparison.OrdinalIgnoreCase))
                 {
                     if ((i + 1) < args.Length) options.NNMinibatch = Convert.ToInt32(args[++i]);
+                }
+                else if (args[i].StartsWith("-nnw", StringComparison.OrdinalIgnoreCase))
+                {
+                    if ((i + 1) < args.Length) options.NNWeightInit = Convert.ToInt32(args[++i]);
+                }
+                else if (args[i].StartsWith("-nnb", StringComparison.OrdinalIgnoreCase))
+                {
+                    if ((i + 1) < args.Length) options.NNBiasInit = Convert.ToInt32(args[++i]);
                 }
                 else if (args[i].StartsWith("-all", StringComparison.OrdinalIgnoreCase))
                 {

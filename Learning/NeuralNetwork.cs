@@ -44,6 +44,24 @@ namespace Learning
         #endregion
     }
 
+    public enum NeuralWeightInitialization
+    {
+        Random_Uniform_NegHalf_PosHalf = 0,  // default
+        Random_Uniform_NegOne_PosOne = 1,
+        Xavier = 2, //(sqrt(6 / (n_in + n_out)))
+        He = 3, // (sqrt(2 / n_in))
+        LeCun = 4 // (1 / sqrt(n_in))
+    }
+
+    public enum NeuralBiasInitialization
+    {
+        Random_Uniform_NegHalf_PosHalf = 0,  // default
+        Random_Uniform_NegOneTenth_PosOneTenth = 1,
+        Zero = 2,
+        SmallConstant_OneTenth = 3,
+        SmallConstant_OneHundredth = 4
+    }
+
     public struct NeuralOptions
     {
         public int InputNumber;         // number of options in the input layer (eg. 10)
@@ -55,6 +73,8 @@ namespace Learning
         public int MinibatchCount;      // how many trainings should be applied per learning update (eg. 100)
                                         // (default 1)
         public bool ParallizeExecution; // do work in parallel (default false)
+        public NeuralWeightInitialization WeightInitialization; // how to initialize the weights and bias' (default Random_Uniform_NegHalf_PosHalf)
+        public NeuralBiasInitialization BiasInitialization; // how to initialize the bias' (default Zero)
     }
 
     public class NeuralNetwork
@@ -90,15 +110,59 @@ namespace Learning
                     // initialize connections into layer
                     var numIncomingConnections = (layer == 0) ? options.InputNumber : options.HiddenLayerNumber[layer-1];
                     Weight[layer][neuron] = new float[numIncomingConnections];
-                    Bias[layer][neuron] = new float[1]
-                    {
-                        GetRandom(rand)
-                    };
 
-                    // initialize with random values
-                    for(int i = 0; i<numIncomingConnections; i++)
+                    // bias'
+                    var bias = 0f;
+                    switch (options.BiasInitialization)
                     {
-                        Weight[layer][neuron][i] = GetRandom(rand);
+                        case NeuralBiasInitialization.Random_Uniform_NegHalf_PosHalf:
+                            bias = (GetRandom(rand) * 1f) - 0.5f;
+                            break;
+                        case NeuralBiasInitialization.Random_Uniform_NegOneTenth_PosOneTenth:
+                            bias = (GetRandom(rand) * 0.2f) - 0.1f;
+                            break;
+                        case NeuralBiasInitialization.Zero:
+                            bias = 0f;
+                            break;
+                        case NeuralBiasInitialization.SmallConstant_OneTenth:
+                            bias = 0.1f;
+                            break;
+                        case NeuralBiasInitialization.SmallConstant_OneHundredth:
+                            bias = 0.01f;
+                            break;
+                        default:
+                            throw new Exception("unknown bias initialization");
+                    }
+                    Bias[layer][neuron] = new float[1] { bias };
+
+                    // initialize weights with random values
+                    var limit = (float)Math.Sqrt(6f / (float)(numIncomingConnections + numNeuronsInLayer));
+                    var stdDev2 = (float)Math.Sqrt(2f / (float)numIncomingConnections);
+                    var stdDev1 = (float)Math.Sqrt(1f / (float)numIncomingConnections);
+                    for (int i = 0; i<numIncomingConnections; i++)
+                    {
+                        var weight = 0f;
+                        switch(options.WeightInitialization)
+                        {
+                            case NeuralWeightInitialization.Random_Uniform_NegHalf_PosHalf:
+                                weight = (GetRandom(rand) * 1f) - 0.5f;
+                                break;
+                            case NeuralWeightInitialization.Random_Uniform_NegOne_PosOne:
+                                weight = (GetRandom(rand) * 2f) - 1f;
+                                break;
+                            case NeuralWeightInitialization.Xavier:
+                                weight = ((GetRandom(rand) * 2f) - 1f) * limit;
+                                break;
+                            case NeuralWeightInitialization.He:
+                                weight = GetGaussianRandom(rand) * stdDev2;
+                                break;
+                            case NeuralWeightInitialization.LeCun:
+                                weight = GetGaussianRandom(rand) * stdDev1;
+                                break;
+                            default:
+                                throw new Exception("unknown weight initialization");
+                        }
+                        Weight[layer][neuron][i] = weight;
                     }
                 }
             }
@@ -546,16 +610,34 @@ namespace Learning
             }
         }
 
-        private unsafe static float GetRandom(RandomNumberGenerator rand)
+        private static float GetRandom(RandomNumberGenerator rand)
         {
-            var array = stackalloc byte[4];
-            var int32buffer = new Span<byte>(array, 4);
+            Span<byte> int32buffer = stackalloc byte[4];
             rand.GetNonZeroBytes(int32buffer);
             // ensure positive
             int32buffer[3] &= 0x7f;
             var number = BitConverter.ToInt32(int32buffer);
-            // get a random float between -0.5 and 0.5
-            return ((float)number / (float)Int32.MaxValue) - 0.5f;
+            // get a random float between 0f and 1f
+            return ((float)number / (float)Int32.MaxValue);
+        }
+
+        private float Sigmoid(float x)
+        {
+            // will normalize the value between 0 and 1
+            return 1f / (1f + (float)Math.Exp(-1f * x));
+        }
+
+        private float GetGaussianRandom(RandomNumberGenerator rand)
+        {
+            // return a random number that fits a gaussian distribution between -phi and phi
+            // using the Box-Muller transform
+            var u1 = GetRandom(rand);
+            while (u1 == 0f) u1 = GetRandom(rand);
+            var u2 = GetRandom(rand);
+            var z0 = (float)(Math.Sqrt(-2f * Math.Log(u1)) * Math.Cos(2f * Math.PI * u2));
+            // the second value is discarded
+            // var z1 = (float)(Math.Sqrt(-2f * Math.Log(u1)) * Math.Sin(2f * Math.PI * u2));
+            return z0;
         }
         #endregion
 

@@ -76,5 +76,21 @@ iterations | w/ model |max  | average | >200   | Percent of Evaluated
 ./CartPoleDriver.exe -alg neural -it 1000000 -nnlearn 1 -nnhidden 16,16
 ```
 
+The Neural Network offers a feature to specify different initialization strategies for weights and bias'.  These strategies can be helpful when models become overfit.  In this case, a series of 3 runs was done (with the above command) but across the available initialization strategies.  The results highlighted a few patterns.
+
+Sum of >200         | Bias: Uniform -0.5 to 0.5 | Bias: Uniform -0.1 to 0.1 | Bias: Zero | Bias: 0.1 | Bias: 0.01
+--------------------|---------------------------|---------------------------|------------|-----------|-----------
+Weight: -0.5 to 0.5 | *327,898*                 | *86,348*                  | *239,930*  | *81,313*  | *173,089*
+Weight: -1 to 1     | *186,428*                 | 101,701                   | 97,402     | 0         | 0
+Weight: Xavier      | *149,613*                 | 5,087                     | 9,166      | 0         | 347,705
+Weight: He          | *145,946*                 | 83,471                    | 0          | 171,283   | 157,182
+Weight: LeCun       | *110,936*                 | 129,902                   | 27,059     | 181,696   | 24,555
+
+On average, across 3 runs, strategies for weights or bias' that included a Uniform -0.5 to 0.5 yielded stronger results.
+
+A few combinations yielded models that hit the local max for this training (501 successful movements).  These models were:
+ * Uniform -0.5 to 0.5 (weight and bias)
+ * Xarier (weight) and uniform -0.5 to 0.5 (bias)
+ * He (weight) and 0.01 (bias)
 
 

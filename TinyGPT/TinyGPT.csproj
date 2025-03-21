@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,8 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Learning\Learning.csproj" />
-    <ProjectReference Include="..\CartPole\CartPole.csproj" />
+    <ProjectReference Include="..\Learning\Learning.csproj" />
   </ItemGroup>
 
 </Project>

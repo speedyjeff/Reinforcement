@@ -221,6 +221,58 @@ namespace Learning.Tests
             }
         }
 
+        public static void Initalizations()
+        {
+            // no deep validation, just ensuring all the init paths are executed
+
+            // create networks with each of the initialization strategies and run a few training iterations
+            var weightInit = new NeuralWeightInitialization[]
+            {
+                NeuralWeightInitialization.Random_Uniform_NegHalf_PosHalf,
+                NeuralWeightInitialization.Random_Uniform_NegOne_PosOne,
+                NeuralWeightInitialization.Xavier,
+                NeuralWeightInitialization.He,
+                NeuralWeightInitialization.LeCun
+            };
+            var biasInit = new NeuralBiasInitialization[]
+            {
+                NeuralBiasInitialization.Random_Uniform_NegHalf_PosHalf,
+                NeuralBiasInitialization.Random_Uniform_NegOneTenth_PosOneTenth,
+                NeuralBiasInitialization.Zero,
+                NeuralBiasInitialization.SmallConstant_OneTenth,
+                NeuralBiasInitialization.SmallConstant_OneHundredth
+            };
+
+            foreach (var wi in weightInit)
+            {
+                var rand = new Random();
+                foreach (var bi in biasInit)
+                {
+                    var options = new NeuralOptions()
+                    {
+                        WeightInitialization = wi,
+                        BiasInitialization = bi,
+                        InputNumber = 10,
+                        OutputNumber = 10,
+                        HiddenLayerNumber = new int[] { 20 },
+                        LearningRate = 0.001f
+                    };
+
+                    var network = new NeuralNetwork(options);
+
+                    for(var i=0; i<10; i++)
+                    {
+                        // create random input
+                        var input = new float[network.InputNumber];
+                        for (int j = 0; j < input.Length; j++) input[j] = ((float)(rand.Next() % 1000)) / 1000f;
+                        // evaluate
+                        var output = network.Evaluate(input);
+                        network.Learn(output, i);
+                    }
+                }
+            }
+        }
+
         #region private
         private static void CreateTrainingData(string imagesfile, string labelfile)
         {

@@ -19,6 +19,7 @@ namespace Learning
                     NeuralNetworkTests.HiddenLayers();
                     NeuralNetworkTests.Converge();
                     NeuralNetworkTests.ForceNaN();
+                    NeuralNetworkTests.Initalizations();
                     NeuralNetworkTests.Perf();
                 }
                 timer.Stop();
@@ -55,6 +56,16 @@ namespace Learning
                 timer.Stop();
                 Console.WriteLine($"{timer.ElapsedMilliseconds} ms");
             }
+
+            Console.WriteLine("language model tests...");
+            LanguageModelTokenizer.TestCreateText();
+            LanguageModelTokenizer.TestCreateOptions();
+            LanguageModelTokenizer.TestNormalization();
+            LanguageModelTokenizer.TestIterations();
+            LanguageModelTokenizer.TestRoundTrip();
+
+            Console.WriteLine("tiny language model tests...");
+            LanguageModelTiny.Converge();
         }
     }
 }

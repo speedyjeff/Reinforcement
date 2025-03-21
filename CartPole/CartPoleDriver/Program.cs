@@ -1,4 +1,5 @@
 ﻿using CartPole;
+using Learning;
 using System;
 
 namespace CartPoleDriver
@@ -29,7 +30,9 @@ namespace CartPoleDriver
                         options.NNSplit,
                         options.NNLearning,
                         options.NNHidden,
-                        options.NNMinibatch); 
+                        options.NNMinibatch,
+                        (NeuralWeightInitialization)options.NNWeightInit, 
+                        (NeuralBiasInitialization)options.NNBiasInit); 
                     break;
                 case AlgorithmType.All:
                     model = new ManualModel();
@@ -42,7 +45,9 @@ namespace CartPoleDriver
                             options.NNSplit,
                             options.NNLearning,
                             options.NNHidden,
-                            options.NNMinibatch)
+                            options.NNMinibatch,
+                            (NeuralWeightInitialization)options.NNWeightInit,
+                            (NeuralBiasInitialization)options.NNBiasInit)
                     };
                     break;
                 default: throw new Exception("unknown algorithm");
@@ -111,7 +116,7 @@ namespace CartPoleDriver
 
                 while (!cartpole.IsDone)
                 {
-                    // dipaly the board (if necessary)
+                    // display the board (if necessary)
                     if (options.Algorithm == AlgorithmType.Manual ||
                         options.Algorithm == AlgorithmType.All) Display(cartpole);
 

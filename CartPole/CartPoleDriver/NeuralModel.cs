@@ -12,7 +12,7 @@ namespace CartPoleDriver
     {
         public AlgorithmType Type => AlgorithmType.Neural;
 
-        public NeuralModel(int iterations, float split, float learning, int[] hidden, int minibatchsize)
+        public NeuralModel(int iterations, float split, float learning, int[] hidden, int minibatchsize, NeuralWeightInitialization weightInit, NeuralBiasInitialization biasInit)
         {
             // parameter init
             MaxIterations = iterations;
@@ -31,7 +31,9 @@ namespace CartPoleDriver
                     OutputNumber = 2,
                     HiddenLayerNumber = hidden,
                     LearningRate = learning,
-                    MinibatchCount = minibatchsize
+                    MinibatchCount = minibatchsize,
+                    WeightInitialization = weightInit,
+                    BiasInitialization = biasInit
                 });
         }
 
