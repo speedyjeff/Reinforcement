@@ -15,7 +15,7 @@ namespace Learning
     {
         // reward     : cost of taking an action (default -0.04)
         // learning   : 0 [no learning/rely on prior knowledge] ... [1] only most recent info (default 0.5)
-        // discount   : 0 [short term rewards] ... 1 [long term rewards] (default 1)
+        // discount   : 0 [short term rewards] ... 1 [long term rewards] (default 1)  (eg. gamma)
         public Q(double reward, double learning, double discount)
         {
             Rand = new Random();
@@ -51,7 +51,7 @@ namespace Learning
                 Matrix.Add(context, curQvalues);
             }
 
-            // choose the higest value action
+            // choose the highest value action
             var possible_a = new List<K>();
             var q_s_a = double.MinValue;
             foreach (var act in actions)
@@ -75,7 +75,7 @@ namespace Learning
 
             if (applyActionFunc != null)
             {
-                // get destination locaion
+                // get destination location
                 T s2 = applyActionFunc(context, a);
 
                 // max(s2)

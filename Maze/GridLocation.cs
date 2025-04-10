@@ -10,16 +10,16 @@ namespace Maze
     {
         public int Row;
         public int Column;
-        public int Dimension;
+        public static int MaxColumn;
 
         public GridLocation ApplyDirection(Direction d)
         {
             switch (d)
             {
-                case Direction.Down: return new GridLocation() { Row = Row + 1, Column = Column, Dimension = Dimension };
-                case Direction.Left: return new GridLocation() { Row = Row, Column = Column - 1, Dimension = Dimension };
-                case Direction.Right: return new GridLocation() { Row = Row, Column = Column + 1, Dimension = Dimension };
-                case Direction.Up: return new GridLocation() { Row = Row - 1, Column = Column, Dimension = Dimension };
+                case Direction.Down: return new GridLocation() { Row = Row + 1, Column = Column };
+                case Direction.Left: return new GridLocation() { Row = Row, Column = Column - 1 };
+                case Direction.Right: return new GridLocation() { Row = Row, Column = Column + 1 };
+                case Direction.Up: return new GridLocation() { Row = Row - 1, Column = Column };
                 default: throw new Exception("Invalid direction to apply : " + d);
             }
         }
@@ -30,9 +30,14 @@ namespace Maze
             return loc != null && Row == loc.Row && Column == loc.Column;
         }
 
+        public int ToInt32()
+        {
+            return (Row * MaxColumn) + Column;
+        }
+
         public override int GetHashCode()
         {
-            return (Row * Dimension) + Column;
+            return ToInt32();
         }
     }
 }

@@ -448,13 +448,13 @@ namespace Learning
 
             // complete initialization
             network.Initialize(new NeuralOptions()
-                {
-                    LearningRate = other.LearningRate,
-                    InputNumber = other.InputNumber,
-                    OutputNumber = other.OutputNumber,
-                    MinibatchCount = other.MinibatchCount,
-                    ParallizeExecution = other.ParallizeExecution
-                });
+            {
+                LearningRate = other.LearningRate,
+                InputNumber = other.InputNumber,
+                OutputNumber = other.OutputNumber,
+                MinibatchCount = other.MinibatchCount,
+                ParallizeExecution = other.ParallizeExecution
+            });
 
             // return the copied network
             return network;

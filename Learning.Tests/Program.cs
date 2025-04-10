@@ -66,6 +66,9 @@ namespace Learning
 
             Console.WriteLine("tiny language model tests...");
             LanguageModelTiny.Converge();
+
+            Console.WriteLine("deep q tests...");
+            DeepQTests.EndToEnd();
         }
     }
 }

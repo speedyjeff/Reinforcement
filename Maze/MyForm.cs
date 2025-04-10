@@ -13,8 +13,13 @@ namespace Maze
     {
         public MyForm()
         {
+            // initialize
+            var rows = 6;
+            var columns = 8;
+            GridLocation.MaxColumn = columns;
+
             // create the maze
-            Maze = new Maze();
+            Maze = new Maze(ModelType.Q, rows, columns);
 
             // form details
             Width = 1000;
@@ -33,8 +38,8 @@ namespace Maze
                     BoxControl box;
 
                     // choose box
-                    if (!Maze.IsValid(loc)) box = new BoxControl(new Direction[] { });
-                    else if (Maze.TryGetTerminal(loc, out double termvalue)) box = new BoxControl(new Direction[] { Direction.Center });
+                    if (!Maze.IsValid(loc)) box = new BoxControl(new Direction[0]);
+                    else if (Maze.TryGetTerminal(loc, out double termValue)) box = new BoxControl(new Direction[] { Direction.Center });
                     else box = new BoxControl(new Direction[] { Direction.Up, Direction.Down, Direction.Left, Direction.Right });
 
                     // add box
