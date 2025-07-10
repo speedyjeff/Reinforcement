@@ -77,6 +77,20 @@ namespace Learning
         public NeuralBiasInitialization BiasInitialization; // how to initialize the bias' (default Zero)
     }
 
+    public enum NeuralMergeMethod
+    {
+        WeightedAverage = 0, // based on fitness
+        GeneticAlgorithm = 1
+    }
+
+    public struct NeuralMergeOptions
+    {
+        public NeuralMergeMethod Method; // how to merge the networks (eg. GeneticAlgorithm)
+        public float[] Fitness; // fitness of each network (eg. null)
+        public float MutationProbability; // probability to include a mutation (eg. 0.01f)
+        public float MutationStrength; // magnitude of mutation (eg. 0.05f)
+    }
+
     public class NeuralNetwork
     {
         public NeuralNetwork(NeuralOptions options) : this()
@@ -97,75 +111,77 @@ namespace Learning
             Bias = new float[options.HiddenLayerNumber.Length + 1][][];
 
             // create the weights and bias'
-            var rand = RandomNumberGenerator.Create();
-            for (int layer=0; layer< options.HiddenLayerNumber.Length + 1; layer++)
+            using (var rand = RandomNumberGenerator.Create())
             {
-                // initialize neurons in layer
-                var numNeuronsInLayer = layer < options.HiddenLayerNumber.Length ? options.HiddenLayerNumber[layer] : options.OutputNumber;
-                Weight[layer] = new float[numNeuronsInLayer][];
-                Bias[layer] = new float[numNeuronsInLayer][];
-
-                for(int neuron=0; neuron < numNeuronsInLayer; neuron++)
+                for (int layer = 0; layer < options.HiddenLayerNumber.Length + 1; layer++)
                 {
-                    // initialize connections into layer
-                    var numIncomingConnections = (layer == 0) ? options.InputNumber : options.HiddenLayerNumber[layer-1];
-                    Weight[layer][neuron] = new float[numIncomingConnections];
+                    // initialize neurons in layer
+                    var numNeuronsInLayer = layer < options.HiddenLayerNumber.Length ? options.HiddenLayerNumber[layer] : options.OutputNumber;
+                    Weight[layer] = new float[numNeuronsInLayer][];
+                    Bias[layer] = new float[numNeuronsInLayer][];
 
-                    // bias'
-                    var bias = 0f;
-                    switch (options.BiasInitialization)
+                    for (int neuron = 0; neuron < numNeuronsInLayer; neuron++)
                     {
-                        case NeuralBiasInitialization.Random_Uniform_NegHalf_PosHalf:
-                            bias = (GetRandom(rand) * 1f) - 0.5f;
-                            break;
-                        case NeuralBiasInitialization.Random_Uniform_NegOneTenth_PosOneTenth:
-                            bias = (GetRandom(rand) * 0.2f) - 0.1f;
-                            break;
-                        case NeuralBiasInitialization.Zero:
-                            bias = 0f;
-                            break;
-                        case NeuralBiasInitialization.SmallConstant_OneTenth:
-                            bias = 0.1f;
-                            break;
-                        case NeuralBiasInitialization.SmallConstant_OneHundredth:
-                            bias = 0.01f;
-                            break;
-                        default:
-                            throw new Exception("unknown bias initialization");
-                    }
-                    Bias[layer][neuron] = new float[1] { bias };
+                        // initialize connections into layer
+                        var numIncomingConnections = (layer == 0) ? options.InputNumber : options.HiddenLayerNumber[layer - 1];
+                        Weight[layer][neuron] = new float[numIncomingConnections];
 
-                    // initialize weights with random values
-                    var limit = (float)Math.Sqrt(6f / (float)(numIncomingConnections + numNeuronsInLayer));
-                    var stdDev2 = (float)Math.Sqrt(2f / (float)numIncomingConnections);
-                    var stdDev1 = (float)Math.Sqrt(1f / (float)numIncomingConnections);
-                    for (int i = 0; i<numIncomingConnections; i++)
-                    {
-                        var weight = 0f;
-                        switch(options.WeightInitialization)
+                        // bias'
+                        var bias = 0f;
+                        switch (options.BiasInitialization)
                         {
-                            case NeuralWeightInitialization.Random_Uniform_NegHalf_PosHalf:
-                                weight = (GetRandom(rand) * 1f) - 0.5f;
+                            case NeuralBiasInitialization.Random_Uniform_NegHalf_PosHalf:
+                                bias = (GetRandom(rand) * 1f) - 0.5f;
                                 break;
-                            case NeuralWeightInitialization.Random_Uniform_NegOne_PosOne:
-                                weight = (GetRandom(rand) * 2f) - 1f;
+                            case NeuralBiasInitialization.Random_Uniform_NegOneTenth_PosOneTenth:
+                                bias = (GetRandom(rand) * 0.2f) - 0.1f;
                                 break;
-                            case NeuralWeightInitialization.Xavier:
-                                weight = ((GetRandom(rand) * 2f) - 1f) * limit;
+                            case NeuralBiasInitialization.Zero:
+                                bias = 0f;
                                 break;
-                            case NeuralWeightInitialization.He:
-                                weight = GetGaussianRandom(rand) * stdDev2;
+                            case NeuralBiasInitialization.SmallConstant_OneTenth:
+                                bias = 0.1f;
                                 break;
-                            case NeuralWeightInitialization.LeCun:
-                                weight = GetGaussianRandom(rand) * stdDev1;
+                            case NeuralBiasInitialization.SmallConstant_OneHundredth:
+                                bias = 0.01f;
                                 break;
                             default:
-                                throw new Exception("unknown weight initialization");
+                                throw new Exception("unknown bias initialization");
                         }
-                        Weight[layer][neuron][i] = weight;
+                        Bias[layer][neuron] = new float[1] { bias };
+
+                        // initialize weights with random values
+                        var limit = (float)Math.Sqrt(6f / (float)(numIncomingConnections + numNeuronsInLayer));
+                        var stdDev2 = (float)Math.Sqrt(2f / (float)numIncomingConnections);
+                        var stdDev1 = (float)Math.Sqrt(1f / (float)numIncomingConnections);
+                        for (int i = 0; i < numIncomingConnections; i++)
+                        {
+                            var weight = 0f;
+                            switch (options.WeightInitialization)
+                            {
+                                case NeuralWeightInitialization.Random_Uniform_NegHalf_PosHalf:
+                                    weight = (GetRandom(rand) * 1f) - 0.5f;
+                                    break;
+                                case NeuralWeightInitialization.Random_Uniform_NegOne_PosOne:
+                                    weight = (GetRandom(rand) * 2f) - 1f;
+                                    break;
+                                case NeuralWeightInitialization.Xavier:
+                                    weight = ((GetRandom(rand) * 2f) - 1f) * limit;
+                                    break;
+                                case NeuralWeightInitialization.He:
+                                    weight = GetGaussianRandom(rand) * stdDev2;
+                                    break;
+                                case NeuralWeightInitialization.LeCun:
+                                    weight = GetGaussianRandom(rand) * stdDev1;
+                                    break;
+                                default:
+                                    throw new Exception("unknown weight initialization");
+                            }
+                            Weight[layer][neuron][i] = weight;
+                        }
                     }
                 }
-            }
+            } // using (rand)
 
             Initialize(options);
         }
@@ -366,6 +382,133 @@ namespace Learning
                 // clear
                 UpdateCount = 0;
             } // if (UpdateCount > 0)
+        }
+
+        public static NeuralNetwork Merge(NeuralNetwork[] networks, NeuralMergeOptions options)
+        {
+            // merge all the networks and return the result
+            if (networks == null || networks.Length == 0) throw new Exception("invalid networks");
+
+            // check that all the networks are the same inner shape
+            networks[0].ForceUpdate();
+            for (int i = 1; i < networks.Length; i++)
+            {
+                networks[i].ForceUpdate();
+                if (networks[i].InputNumber != networks[0].InputNumber) throw new Exception("networks must have the same input number");
+                if (networks[i].OutputNumber != networks[0].OutputNumber) throw new Exception("networks must have the same output number");
+                if (networks[i].Weight.Length != networks[0].Weight.Length) throw new Exception("networks must have the same number of layers");
+                if (networks[i].Bias.Length != networks[0].Bias.Length) throw new Exception("networks must have the same number of layers");
+            }
+
+            // create the new network
+            var merged = Load(networks[0]);
+
+            // exit early if there is only 1 network
+            if (networks.Length == 1) return merged;
+
+            // build an even distribution or distribution based on fitness
+            var distribution = new float[networks.Length];
+            var weights = new float[networks.Length];
+            var uniformDistribution = true;
+            if (options.Fitness != null && options.Fitness.Length == networks.Length)
+            {
+                // normalize fitness scores to create a probability distribution
+                var total = 0f;
+                for (int i = 0; i < options.Fitness.Length; i++)
+                {
+                    if (options.Fitness[i] < 0f) throw new Exception("fitness must be a positive number");
+                    total += options.Fitness[i];
+                }
+
+                if (total > 0f)
+                {
+                    // create a cumulative distribution
+                    var accumulation = 0f;
+                    for (int i = 0; i < options.Fitness.Length; i++)
+                    {
+                        var weight = (options.Fitness[i] / total);
+                        accumulation += weight;
+                        distribution[i] = accumulation;
+                        weights[i] = weight;
+                    }
+
+                    // keep this distribution and set the uniform distribution to false
+                    uniformDistribution = false;
+                }
+            }
+
+            // create an uniform distribution
+            if (uniformDistribution)
+            {
+                for (int i = 0; i < distribution.Length; i++)
+                {
+                    distribution[i] = (float)i / (float)distribution.Length;
+                    weights[i] = 1f / (float)distribution.Length;
+                }
+            }
+
+            // merge the networks
+            if (options.Method == NeuralMergeMethod.GeneticAlgorithm)
+            {
+                // https://en.wikipedia.org/wiki/Genetic_algorithm
+                // genetic algorithm
+                using (var rand = RandomNumberGenerator.Create())
+                {
+                    for (int layer = 0; layer < merged.Weight.Length; layer++)
+                    {
+                        for (int neuron = 0; neuron < merged.Weight[layer].Length; neuron++)
+                        {
+                            for (int conn = 0; conn < merged.Weight[layer][neuron].Length; conn++)
+                            {
+                                // weight
+                                var parent = SelectNetworkByDistribution(networks, distribution, rand);
+                                var mutation = GetMutation(options.MutationProbability, options.MutationStrength, rand);
+                                merged.Weight[layer][neuron][conn] = (parent.Weight[layer][neuron][conn] + mutation);
+                            }
+
+                            // bias
+                            var biasParent = SelectNetworkByDistribution(networks, distribution, rand);
+                            var biasMutation = GetMutation(options.MutationProbability, options.MutationStrength, rand);
+                            merged.Bias[layer][neuron][0] = (biasParent.Bias[layer][neuron][0] + biasMutation);
+                        }
+                    }
+                }
+            }
+            else if (options.Method == NeuralMergeMethod.WeightedAverage)
+            {
+                // https://en.wikipedia.org/wiki/Collective_operation#All-Reduce
+                // weighted average (eg. AllReduce)
+                for (int layer = 0; layer < merged.Weight.Length; layer++)
+                {
+                    for (int neuron = 0; neuron < merged.Weight[layer].Length; neuron++)
+                    {
+                        for (int conn = 0; conn < merged.Weight[layer][neuron].Length; conn++)
+                        {
+                            // weight
+                            var sum = 0f;
+                            for (int i = 0; i < networks.Length; i++)
+                            {
+                                sum += (networks[i].Weight[layer][neuron][conn] * weights[i]);
+                            }
+                            merged.Weight[layer][neuron][conn] = sum;
+                        }
+
+                        // bias
+                        var biasSum = 0f;
+                        for (int i = 0; i < networks.Length; i++)
+                        {
+                            biasSum += (networks[i].Bias[layer][neuron][0] * weights[i]);
+                        }
+                        merged.Bias[layer][neuron][0] = biasSum;
+                    }
+                }
+            }
+            else
+            {
+                throw new Exception($"unknown merge method : {options.Method}");
+            }
+
+            return merged;
         }
 
         public void Save(string filename)
@@ -571,8 +714,8 @@ namespace Learning
         //  0 - layers (eg. 0 [input to hidden], 1 - [hidden to output])
         //  1 - number of neurons in layer (eg. 0 - 10 [hidden], 1 - 10 [output]) (skip input, start at first hidden to end)
         //  2 - number of connections into layer (eg. 0 - 784 [input to hidden], 1 - 10 [hidden to output])  (start at input to end, skip output)
-        public float[][][] Weight;
-        public float[][][] Bias;
+        private float[][][] Weight;
+        private float[][][] Bias;
 
         // batch up updates to apply (the average smooths out learning)
         struct NeuralUpdate
@@ -580,7 +723,6 @@ namespace Learning
             public float[][][] dW;
             public float[][] dB;
         }
-        //private List<NeuralUpdate> Updates;
         private int UpdateCount;
         private NeuralUpdate AggregatedUpdate;
 
@@ -638,6 +780,30 @@ namespace Learning
             // the second value is discarded
             // var z1 = (float)(Math.Sqrt(-2f * Math.Log(u1)) * Math.Sin(2f * Math.PI * u2));
             return z0;
+        }
+
+        private static NeuralNetwork SelectNetworkByDistribution(NeuralNetwork[] networks, float[] distribution, RandomNumberGenerator rand)
+        {
+            var r = GetRandom(rand);
+            for (int i = 0; i < distribution.Length; i++)
+            {
+                if (r < distribution[i]) return networks[i];
+            }
+            return networks[^1]; // fallback
+        }
+
+        private static float GetMutation(float probability, float strength, RandomNumberGenerator rand)
+        {
+            if (probability <= 0f || strength <= 0f) return 0f;
+
+            // apply mutation with a small chance
+            if (GetRandom(rand) < probability)
+            {
+                // (-1f to 1f) * mutation strength
+                return ((GetRandom(rand) * 2f) - 1f) * strength;
+            }
+
+            return 0f;
         }
         #endregion
 

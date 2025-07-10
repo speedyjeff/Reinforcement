@@ -24,6 +24,7 @@ namespace TinyGPT
         public int MinTrainSequenceLength { get; set; }
         public int[] LayerMultipliers { get; set; }
         public float LearningFactor { get; set; }
+        public int ConcurrentInstances { get; set; }
         public NeuralWeightInitialization WeightInitialization { get; set; }
         public NeuralBiasInitialization BiasInitialization { get; set; }
         public string Vocabulary { get; set; }
@@ -49,6 +50,7 @@ namespace TinyGPT
             Console.WriteLine("  -se[quenceLength] <len>   - sequence length to use (default is 6 or 16)");
             Console.WriteLine("  -la[yerMultipliers] <int>[,<int>,...] - multiplier used in the hidden layers of the network");
             Console.WriteLine("  -le[arningFactor] <real>   - learning factor (default is 0.0001 or 0.00001)");
+            Console.WriteLine("  -c[oncurrentInstances] <int> - number of concurrent instances (default 1)");
             Console.WriteLine(" alphabet:");
             Console.WriteLine("   -vo[cabulary] <vocab>   - vocabulary to use (default is 'ABC')");
             Console.WriteLine(" shakespeare:");
@@ -71,7 +73,8 @@ namespace TinyGPT
                 Inferences = 100,
                 WeightInitialization = NeuralWeightInitialization.Random_Uniform_NegHalf_PosHalf,
                 BiasInitialization = NeuralBiasInitialization.Random_Uniform_NegHalf_PosHalf,
-                StopAfterNumSuccesses = 10
+                StopAfterNumSuccesses = 10,
+                ConcurrentInstances = 1
             };
 
             // first option is choosing the dataset, this is necessary as the default are different between datasets
@@ -174,6 +177,11 @@ namespace TinyGPT
                     case "-learningfactor":
                         if (++i >= args.Length) throw new ArgumentException("learning factor not specified");
                         options.LearningFactor = float.Parse(args[i]);
+                        break;
+                    case "-c":
+                    case "-concurrentinstances":
+                        if (++i >= args.Length) throw new ArgumentException("concurrent instances not specified");
+                        options.ConcurrentInstances = int.Parse(args[i]);
                         break;
                     case "-sh":
                     case "-shakespearefilepath":

@@ -110,7 +110,7 @@ namespace TinyGPT
                     HiddenLayerNumber = hiddenLayerNum,
                     LearningRate = options.LearningFactor, // 0.00001f
                     MinibatchCount = 1,
-                    ParallizeExecution = true,
+                    ParallizeExecution = false,
                     WeightInitialization = options.WeightInitialization,
                     BiasInitialization = options.BiasInitialization
                 },
@@ -121,24 +121,34 @@ namespace TinyGPT
 
         public void Train(int iterations)
         {
-            // create a local copy of the tokens (+1 to include the last correct reply)
-            var length = Options.SequenceLength + 1;
-            var localTokens = new List<int>();
-            for(int i=0; i < length; i++) localTokens.Add(0);
+            Train(Model, iterations);
+        }
 
-            // train the model
-            while (iterations-- > 0)
+        public void TrainParallel(int iterations, int fitnessInferences, int instances = 1)
+        {
+            // split the model for training
+            var models = new TinyLanguageModel[instances];
+            for (int i = 0; i < models.Length; i++) models[i] = Model.Copy();
+
+            // train the model in parallel
+            var fitness = new float[instances];
+            Parallel.For(0, instances, i =>
             {
-                // get starting position
-                var start = (int)Math.Floor(GetRandom() * (Encoded.Count - length));
-                if (Options.StaticStartingPoint) start = 0;
+                // train
+                Train(models[i], iterations);
+                // inference (for fitness)
+                fitness[i] = (float)Inference(fitnessInferences, verbose: false);
+            });
 
-                // get a local copy of these tokens
-                for (int i = 0; i < localTokens.Count; i++) localTokens[i] = Encoded[start + i];
-
-                // train the model
-                Model.Train(localTokens, Options.MinTokenCount);
-            }
+            // merge the models
+            Model = TinyLanguageModel.Merge(models,
+                new NeuralMergeOptions()
+                {
+                    Method = NeuralMergeMethod.WeightedAverage,
+                    Fitness = fitness,
+                    MutationProbability = 0.01f,
+                    MutationStrength = 0.05f
+                });
         }
 
         public float Inference(int iterations, bool verbose = false)
@@ -238,6 +248,28 @@ namespace TinyGPT
         private ShakespeareOptions Options;
         private RandomNumberGenerator Rand;
         private const int TopN = 4;
+
+        private void Train(TinyLanguageModel model, int iterations)
+        {
+            // create a local copy of the tokens (+1 to include the last correct reply)
+            var length = Options.SequenceLength + 1;
+            var localTokens = new List<int>();
+            for (int i = 0; i < length; i++) localTokens.Add(0);
+
+            // train the model
+            while (iterations-- > 0)
+            {
+                // get starting position
+                var start = (int)Math.Floor(GetRandom() * (Encoded.Count - length));
+                if (Options.StaticStartingPoint) start = 0;
+
+                // get a local copy of these tokens
+                for (int i = 0; i < localTokens.Count; i++) localTokens[i] = Encoded[start + i];
+
+                // train the model
+                model.Train(localTokens, Options.MinTokenCount);
+            }
+        }
 
         private float GetRandom()
         {

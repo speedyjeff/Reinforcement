@@ -1,5 +1,5 @@
 ﻿using System;
-
+using System.Diagnostics;
 using Learning;
 using Learning.LanguageModel;
 
@@ -31,10 +31,14 @@ namespace TinyGPT
                 });
 
                 var successfulRunCount = 0;
+                var timer = new Stopwatch();
                 Console.WriteLine("Iteration\tCorrect/Total");
+                timer.Start();
                 for (int i = 0; i < options.TrainingIterations; i++)
                 {
-                    alpha.Train(options.IterationsPerTraining);
+                    // train
+                    if (options.ConcurrentInstances <= 1) alpha.Train(options.IterationsPerTraining);
+                    else alpha.TrainParallel(options.IterationsPerTraining, options.Inferences, options.ConcurrentInstances);
 
                     var correct = alpha.Inference(options.Inferences, verbose: false);
                     // show periodic progress
@@ -53,6 +57,8 @@ namespace TinyGPT
                         break;
                     }
                 }
+                timer.Stop();
+                Console.WriteLine($"Elapsed: {timer.ElapsedMilliseconds} ms");
             }
 
             // shakespeare
@@ -78,7 +84,8 @@ namespace TinyGPT
                 for (int i = 0; i < options.TrainingIterations; i++)
                 {
                     // train
-                    shakespeare.Train(options.IterationsPerTraining);
+                    if (options.ConcurrentInstances <= 1) shakespeare.Train(options.IterationsPerTraining);
+                    else shakespeare.TrainParallel(options.IterationsPerTraining, options.Inferences, options.ConcurrentInstances);
 
                     // inference
                     var percentCorrect = shakespeare.Inference(options.Inferences, verbose: false);

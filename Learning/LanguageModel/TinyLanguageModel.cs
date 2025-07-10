@@ -92,10 +92,40 @@ namespace Learning.LanguageModel
             return output.Result;
         }
 
+        public TinyLanguageModel Copy()
+        {
+            // create a copy of the model
+            return new TinyLanguageModel()
+            {
+                Network = NeuralNetwork.Load(Network),
+                PaddingToken = PaddingToken,
+                NetworkInput = new float[NetworkInput.Length]
+            };
+        }
+
+        public static TinyLanguageModel Merge(TinyLanguageModel[] models, NeuralMergeOptions options)
+        {
+            if (models == null || models.Length == 0) throw new ArgumentException("models cannot be null or empty");
+
+            // create an array of the neural networks in these models
+            var networks = new NeuralNetwork[models.Length];
+            for (var i = 0; i < models.Length; i++) networks[i] = models[i].Network;
+
+            // merge the models
+            return new TinyLanguageModel()
+            {
+                Network = NeuralNetwork.Merge(networks, options),
+                PaddingToken = models[0].PaddingToken,
+                NetworkInput = new float[models[0].NetworkInput.Length]
+            };
+        }
+
         #region private
         private NeuralNetwork Network;
         private float[] NetworkInput;
         private int PaddingToken;
+
+        private TinyLanguageModel() { }
 
         struct TopN
         {

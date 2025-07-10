@@ -63,32 +63,43 @@ namespace TinyGPT
                     HiddenLayerNumber = hiddenLayerNum,
                     LearningRate = options.LearningFactor,  //0.0001f
                     MinibatchCount = 1,
-                    ParallizeExecution = true,
+                    ParallizeExecution = false,
                     WeightInitialization = options.WeightInitialization,
                     BiasInitialization = options.BiasInitialization
                 },
                 paddingToken: Tokenizer.Tokens[Tokenizer.Padding]);
         }
 
+        public void TrainParallel(int iterations, int fitnessInferences, int instances = 1)
+        {
+            // split the model for training
+            var models = new TinyLanguageModel[instances];
+            for (int i = 0; i< models.Length; i++) models[i] = Model.Copy();
+
+            // train the model in parallel
+            var fitness = new float[instances];
+            Parallel.For(0, instances, i => 
+            {
+                // train
+                Train(models[i], iterations); 
+                // inference (for fitness)
+                fitness[i] = (float)Inference(fitnessInferences, verbose: false);
+            });
+
+            // merge the models
+            Model = TinyLanguageModel.Merge(models, 
+                new NeuralMergeOptions() 
+                {
+                    Method = NeuralMergeMethod.WeightedAverage,
+                    Fitness = fitness,
+                    MutationProbability = 0.01f,
+                    MutationStrength = 0.05f
+                });
+        }
+
         public void Train(int iterations)
         {
-            for(int i = 0; i<iterations; i++)
-            {
-                // get a random sequence
-                var sequence = GetRandomSequence(SequenceLength);
-
-                // build the string along with the correct output
-                var sb = new StringBuilder();
-                sb.Append(sequence);
-                Array.Sort(sequence);
-                sb.Append(sequence);
-
-                // tokenize the input
-                var tokens = Tokenizer.Encode(sb.ToString());
-
-                // train the model
-                Model.Train(tokens, minTokenCount: SequenceLength);
-            }
+            Train(Model, iterations);
         }
 
         public int Inference(int iterations, bool verbose = false)
@@ -141,6 +152,27 @@ namespace TinyGPT
         private Tokenizer Tokenizer;
         private TinyLanguageModel Model;
         private int SequenceLength;
+
+        private void Train(TinyLanguageModel model, int iterations)
+        {
+            for (int i = 0; i < iterations; i++)
+            {
+                // get a random sequence
+                var sequence = GetRandomSequence(SequenceLength);
+
+                // build the string along with the correct output
+                var sb = new StringBuilder();
+                sb.Append(sequence);
+                Array.Sort(sequence);
+                sb.Append(sequence);
+
+                // tokenize the input
+                var tokens = Tokenizer.Encode(sb.ToString());
+
+                // train the model
+                model.Train(tokens, minTokenCount: SequenceLength);
+            }
+        }
 
         private char[] GetRandomSequence(int length)
         {
