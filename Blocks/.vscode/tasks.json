@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build blocks",
+            "type": "shell",
+            "command": "dotnet build blocks\\blocks.csproj",
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "run blocks",
+            "type": "shell",
+            "command": "dotnet run --project blocks\\blocks.csproj",
+            "group": "test",
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
