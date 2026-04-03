@@ -4,7 +4,22 @@ using System.Linq;
 using blocks.engine;
 using Learning;
 
-public class Computer : IPlayer
+/// <summary>
+/// Hybrid Blocks agent that combines a learned policy prior with explicit move planning.
+///
+/// Methodology:
+/// 1. Encode the current board plus the three available piece shapes into a 139-value input vector.
+/// 2. Use the neural network to produce a prior score over the 192 possible piece-slot/board-position actions.
+/// 3. Enumerate only legal moves, then rescore them with domain-aware signals such as immediate score gain,
+///    line-clear potential, board health, dead-end avoidance, and short-horizon lookahead.
+/// 4. Choose among the strongest candidates with limited exploration during training and near-deterministic play
+///    for evaluation / saved models.
+/// 5. Learn from full-game trajectories, reinforcing moves that appear in higher-return episodes.
+///
+/// In practice this is intentionally not a pure end-to-end RL player. The network supplies a useful policy prior,
+/// but the final strength comes from combining that learned signal with search and board-quality heuristics.
+/// </summary>
+public class HybridComputerPlayer : IPlayer
 {
     private readonly Learning.NeuralNetwork _neuralNetwork;
     private readonly Random _random;
@@ -78,7 +93,7 @@ public class Computer : IPlayer
         public float Score { get; }
     }
 
-    public Computer()
+    public HybridComputerPlayer()
     {
         _random = new Random();
         _learningEnabled = true;
@@ -126,7 +141,7 @@ public class Computer : IPlayer
         _temperatureMin = 0.05f;
     }
 
-    public Computer(Learning.NeuralNetwork neuralNetwork)
+    public HybridComputerPlayer(Learning.NeuralNetwork neuralNetwork)
     {
         _neuralNetwork = neuralNetwork ?? throw new ArgumentNullException(nameof(neuralNetwork));
         _random = new Random();
@@ -1439,5 +1454,20 @@ public class Computer : IPlayer
             }
         }
         return total > 0 ? matches / (float)total : 0;
+    }
+}
+
+/// <summary>
+/// Backward-compatible alias for older code. Prefer <see cref="HybridComputerPlayer"/>.
+/// </summary>
+public class Computer : HybridComputerPlayer
+{
+    public Computer()
+    {
+    }
+
+    public Computer(Learning.NeuralNetwork neuralNetwork)
+        : base(neuralNetwork)
+    {
     }
 }

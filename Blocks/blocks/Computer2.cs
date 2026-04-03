@@ -5,7 +5,7 @@ using blocks.engine;
 using Learning;
 
 /// <summary>
-/// Computer2: A simpler reinforcement learning agent using Monte Carlo policy gradient.
+/// MonteCarloPolicyComputerPlayer: a simpler reinforcement learning agent using Monte Carlo policy gradient.
 /// 
 /// Key Design Principles:
 /// 1. PIECE-AGNOSTIC INPUTS: Only sees board occupancy (64 binary values)
@@ -20,7 +20,7 @@ using Learning;
 /// 
 /// Without needing to understand specific piece shapes.
 /// </summary>
-public class Computer2 : IPlayer
+public class MonteCarloPolicyComputerPlayer : IPlayer
 {
     private readonly NeuralNetwork _network;
     private readonly Random _random;
@@ -50,7 +50,7 @@ public class Computer2 : IPlayer
     private readonly Queue<float> _recentScores = new();
     private const int RecentScoreWindow = 100;
 
-    public Computer2()
+    public MonteCarloPolicyComputerPlayer()
     {
         _random = new Random();
 
@@ -76,7 +76,7 @@ public class Computer2 : IPlayer
         _temperatureMin = 0.3f;
     }
 
-    public Computer2(NeuralNetwork network)
+    public MonteCarloPolicyComputerPlayer(NeuralNetwork network)
     {
         _network = network ?? throw new ArgumentNullException(nameof(network));
         _random = new Random();
@@ -359,5 +359,20 @@ public class Computer2 : IPlayer
     {
         return $"Games: {GamesPlayed}, Best: {BestScore:F0}, Recent Avg: {RecentAverageScore:F1}, " +
                $"ε: {_epsilon:F3}, τ: {_temperature:F3}";
+    }
+}
+
+/// <summary>
+/// Backward-compatible alias for older code. Prefer <see cref="MonteCarloPolicyComputerPlayer"/>.
+/// </summary>
+public class Computer2 : MonteCarloPolicyComputerPlayer
+{
+    public Computer2()
+    {
+    }
+
+    public Computer2(NeuralNetwork network)
+        : base(network)
+    {
     }
 }

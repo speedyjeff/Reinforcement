@@ -18,14 +18,17 @@ class Program
             Console.WriteLine("Welcome to Block Game!");
             Console.WriteLine("Choose mode:");
             Console.WriteLine("1. Human Player");
-            Console.WriteLine("2. Computer Player (AI)");
-            Console.WriteLine("3. Computer Player (based on past training)");
-            Console.WriteLine("4. Train AI (Evolutionary Algorithm)");
+            Console.WriteLine("2. Computer Player (AI hybrid)");
+            Console.WriteLine("3. Computer Player (hybrid based on past training)");
+            Console.WriteLine("4. Train AI (hybrid trainer)");
             Console.WriteLine("5. Test Scenarios (verify learning on puzzles)");
-            Console.Write("Enter choice (1-5): ");
+            Console.WriteLine("6. Computer Player (classic RL, neural only)");
+            Console.WriteLine("7. Computer Player (classic RL from training)");
+            Console.WriteLine("8. Train AI (classic RL, neural only)");
+            Console.Write("Enter choice (1-8): ");
             
             str = Console.ReadLine();
-        } while (Int32.TryParse(str, out choice) == false || choice < 1 || choice > 5);
+        } while (Int32.TryParse(str, out choice) == false || choice < 1 || choice > 8);
         
         // training AI mode
         if (choice == 4)
@@ -33,13 +36,26 @@ class Program
             Console.WriteLine("\nStarting AI training with policy gradients...");
             Console.WriteLine("This will train a single network over many games.\n");
             
-            var trainer = new ComputerTrainer();
+            var trainer = new HybridComputerTrainer();
             
             // Train with simplified immediate learning: 5,000 games for testing
             var trainedNetwork = trainer.Train(totalGames: 5000, reportInterval: 100);
             
             trainer.SaveNetwork(trainedNetwork, "trained_network.txt");
             Console.WriteLine("\nTraining completed! Network saved to 'trained_network.txt'");
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadLine();
+        }
+        else if (choice == 8)
+        {
+            Console.WriteLine("\nStarting classic reinforcement learning training...");
+            Console.WriteLine("This player learns purely from the neural network and rewards.\n");
+
+            var trainer = new ComputerClassicRLTrainer();
+            var trainedNetwork = trainer.Train(totalGames: 5000, reportInterval: 100);
+
+            trainer.SaveNetwork(trainedNetwork, "trained_network_classic_rl.txt");
+            Console.WriteLine("\nTraining completed! Network saved to 'trained_network_classic_rl.txt'");
             Console.WriteLine("Press any key to exit...");
             Console.ReadLine();
         }
@@ -54,14 +70,36 @@ class Program
             {
                 Console.WriteLine("Computer player selected. Watch the AI play!");
                 Console.WriteLine("Press any key between moves to continue...");
-                player = new Computer();
+                player = new HybridComputerPlayer();
             }
             else if (choice == 3)
             {
                 Console.WriteLine("Trained AI player loaded.");
                 Console.WriteLine("Press any key between moves to continue...");
                 var trainedNetwork = NeuralNetwork.Load("trained_network.txt");
-                player = new Computer(trainedNetwork);
+                player = new HybridComputerPlayer(trainedNetwork);
+            }
+            else if (choice == 6)
+            {
+                Console.WriteLine("Classic RL player selected.");
+                Console.WriteLine("This version learns from the neural network only.");
+                Console.WriteLine("Press any key between moves to continue...");
+                player = new ComputerClassicRL();
+            }
+            else if (choice == 7)
+            {
+                Console.WriteLine("Trained classic RL player loaded.");
+                Console.WriteLine("Press any key between moves to continue...");
+                try
+                {
+                    var trainedNetwork = NeuralNetwork.Load("trained_network_classic_rl.txt");
+                    player = new ComputerClassicRL(trainedNetwork);
+                }
+                catch
+                {
+                    Console.WriteLine("Could not load trained_network_classic_rl.txt, using a fresh classic RL network.");
+                    player = new ComputerClassicRL();
+                }
             }
             else
             {
@@ -103,24 +141,24 @@ class Program
         Console.Write("Use trained network? (y/n): ");
         var useTrained = Console.ReadLine()?.ToLower() == "y";
         
-        Computer computer;
+        HybridComputerPlayer computer;
         if (useTrained)
         {
             try
             {
                 var network = Learning.NeuralNetwork.Load("trained_network.txt");
-                computer = new Computer(network);
+                computer = new HybridComputerPlayer(network);
                 Console.WriteLine("Loaded trained_network.txt\n");
             }
             catch
             {
                 Console.WriteLine("Could not load trained_network.txt, using fresh network\n");
-                computer = new Computer();
+                computer = new HybridComputerPlayer();
             }
         }
         else
         {
-            computer = new Computer();
+            computer = new HybridComputerPlayer();
             Console.WriteLine("Using fresh (untrained) network\n");
         }
 
@@ -185,7 +223,7 @@ class Program
     /// <summary>
     /// Plays a single scenario and returns the final score and board state
     /// </summary>
-    private static (int score, int[][] board) PlayScenario(Computer computer, TestScenario scenario)
+    private static (int score, int[][] board) PlayScenario(HybridComputerPlayer computer, TestScenario scenario)
     {
         var blocks = new Blocks();
         var generator = new BlockGenerator(scenario);
@@ -318,7 +356,7 @@ class Program
             }
 
             // If computer is playing, show the move and pause
-            if (player is Computer)
+            if (player is not Human)
             {
                 Console.WriteLine($"Computer placed {move.Piece} at ({move.Row}, {move.Col})");
                 Console.WriteLine("Press any key to continue...");

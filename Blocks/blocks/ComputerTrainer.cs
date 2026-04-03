@@ -12,14 +12,22 @@ public class FitnessResult
     public int MaxPiecesPlayed { get; set; }
 }
 
-public class ComputerTrainer
+/// <summary>
+/// Trainer and evaluator for the hybrid search-assisted player.
+///
+/// This stays separate from <see cref="ComputerClassicRLTrainer"/> because the hybrid player is a different
+/// implementation with a different learning loop: it combines neural guidance with heuristic rescoring and shallow
+/// search, then learns from episode trajectories using <see cref="HybridComputerPlayer.LearnFromMove"/> and
+/// <see cref="HybridComputerPlayer.FlushExperienceBuffer"/>.
+/// </summary>
+public class HybridComputerTrainer
 {
-    public ComputerTrainer()
+    public HybridComputerTrainer()
     {
         _random = new Random();
     }
 
-    public static FitnessResult Evaluate(Computer computer, int gameCount = 100)
+    public static FitnessResult Evaluate(HybridComputerPlayer computer, int gameCount = 100)
     {
         if (computer == null) throw new ArgumentNullException(nameof(computer));
         if (gameCount <= 0) throw new ArgumentOutOfRangeException(nameof(gameCount));
@@ -34,7 +42,7 @@ public class ComputerTrainer
     /// <param name="totalGames">Total number of games to play for training</param>
     /// <param name="reportInterval">How often to report progress (in games)</param>
     /// <returns>The trained neural network</returns>
-    public Computer Train(int totalGames = 10000, int reportInterval = 100)
+    public HybridComputerPlayer Train(int totalGames = 10000, int reportInterval = 100)
     {
         Console.WriteLine($"Starting policy gradient training: {totalGames:N0} games");
         Console.WriteLine($"Network: 139 inputs → [128, 64] → 192 outputs");
@@ -42,7 +50,7 @@ public class ComputerTrainer
         Console.WriteLine($"Strategy: policy prior + short-horizon lookahead\n");
 
         // Create single network that will learn continuously
-        var computer = new Computer();
+        var computer = new HybridComputerPlayer();
         
         // Tracking variables
         var bestScore = 0;
@@ -135,7 +143,7 @@ public class ComputerTrainer
         /// <summary>
     /// Saves a computer's neural network using the built-in Save method
     /// </summary>
-    public void SaveNetwork(Computer computer, string filename)
+    public void SaveNetwork(HybridComputerPlayer computer, string filename)
     {
         try
         {
@@ -152,7 +160,7 @@ public class ComputerTrainer
     private readonly Random _random;
     private const int MaxPiecePlacement = 1000;
 
-    private static FitnessResult SimulateGame(Computer computer, int gameCount)
+    private static FitnessResult SimulateGame(HybridComputerPlayer computer, int gameCount)
     {
         var totalFitness = 0d;
         var totalPiecesPlayed = 0;
@@ -224,4 +232,11 @@ public class ComputerTrainer
         };
     }
     #endregion
+}
+
+/// <summary>
+/// Backward-compatible alias for older code. Prefer <see cref="HybridComputerTrainer"/>.
+/// </summary>
+public class ComputerTrainer : HybridComputerTrainer
+{
 }
