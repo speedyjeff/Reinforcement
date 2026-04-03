@@ -178,6 +178,27 @@ public class Blocks
         return arr;
     }
 
+    /// <summary>
+    /// Creates a deep copy of the current board state so the AI can evaluate
+    /// candidate sequences without mutating the live game.
+    /// </summary>
+    public Blocks Clone()
+    {
+        var copy = new Blocks
+        {
+            Score = Score,
+            PiecesPlayed = PiecesPlayed,
+            PreviousClearCount = PreviousClearCount
+        };
+
+        for (int i = 0; i < GridSize; i++)
+        {
+            Array.Copy(Grid[i], copy.Grid[i], GridSize);
+        }
+
+        return copy;
+    }
+
     // Check if the game is over (no pieces in the list can be placed)
     public bool IsGameOver(IEnumerable<PieceType> availablePieces)
     {

@@ -8,6 +8,7 @@ public class Computer : IPlayer
 {
     private readonly Learning.NeuralNetwork _neuralNetwork;
     private readonly Random _random;
+    private readonly bool _learningEnabled;
 
     // Policy Gradient hyperparameters
     private readonly float _gamma; // Discount factor for future rewards
@@ -38,10 +39,49 @@ public class Computer : IPlayer
     private const int PiecesInputSize = NumPieces * PieceEncodingSize; // 3 * 25 = 75
     private const int TotalInputSize = BoardInputSize + PiecesInputSize; // 64 + 75 = 139
     private const int ActionSpaceSize = BoardInputSize * NumPieces; // 64 * 3 = 192
+    private const int SearchDepth = 2;
+    private const int SearchBeamWidth = 10;
+    private const float TerminalPenalty = 12f;
+    private const float DeadEndPenalty = 90f;
+    private static readonly (PieceType piece, float weight)[] FutureMobilityPieces =
+    {
+        (PieceType.Square3x3, 6.0f),
+        (PieceType.Horizontal5, 5.0f),
+        (PieceType.Vertical5, 5.0f),
+        (PieceType.Horizontal2x3, 4.5f),
+        (PieceType.Vertical2x3, 4.5f),
+        (PieceType.Horizontal4, 4.0f),
+        (PieceType.Vertical4, 4.0f),
+        (PieceType.Square2x2, 3.5f),
+        (PieceType.BigTUp, 3.0f),
+        (PieceType.BigLTopLeft, 3.0f),
+        (PieceType.BigCornerTopLeft, 3.0f),
+        (PieceType.TUp, 2.5f),
+        (PieceType.ZUp, 2.5f),
+        (PieceType.CornerTopLeft, 2.0f),
+        (PieceType.Horizontal3, 1.5f),
+        (PieceType.Vertical3, 1.5f),
+        (PieceType.Single, 0.5f)
+    };
+
+    private readonly struct CandidateMove
+    {
+        public CandidateMove(Move move, int actionIndex, float score)
+        {
+            Move = move;
+            ActionIndex = actionIndex;
+            Score = score;
+        }
+
+        public Move Move { get; }
+        public int ActionIndex { get; }
+        public float Score { get; }
+    }
 
     public Computer()
     {
         _random = new Random();
+        _learningEnabled = true;
         
         // Policy Gradient Neural Network Architecture (MINIMAL):
         // Input: Board state + Piece shapes only
@@ -78,25 +118,26 @@ public class Computer : IPlayer
         
         // Policy Gradient hyperparameters
         _gamma = 0.99f; // Discount factor for future rewards
-        _epsilon = 0.05f; // ε-greedy: 5% random exploration
-        _epsilonDecay = 0.9999f; // Decay ε slowly
-        _epsilonMin = 0.01f; // Minimal exploration (1%)
-        _temperature = 0.5f; // Low temp = trust the model
-        _temperatureDecay = 0.9999f; // Decay slowly
-        _temperatureMin = 0.2f; // Very low for exploitation
+        _epsilon = 0.08f; // Explore, but bias exploration toward strong candidate moves
+        _epsilonDecay = 0.9998f;
+        _epsilonMin = 0.01f;
+        _temperature = 0.22f;
+        _temperatureDecay = 0.9998f;
+        _temperatureMin = 0.05f;
     }
 
     public Computer(Learning.NeuralNetwork neuralNetwork)
     {
         _neuralNetwork = neuralNetwork ?? throw new ArgumentNullException(nameof(neuralNetwork));
         _random = new Random();
+        _learningEnabled = false;
         _gamma = 0.99f;
-        _epsilon = 0.05f; // Pre-trained: minimal exploration (5%)
-        _epsilonDecay = 0.9999f;
-        _epsilonMin = 0.01f;
-        _temperature = 0.5f; // Pre-trained networks use less exploration
-        _temperatureDecay = 0.9999f;
-        _temperatureMin = 0.2f;
+        _epsilon = 0.0f; // Pre-trained play should be deterministic
+        _epsilonDecay = 1.0f;
+        _epsilonMin = 0.0f;
+        _temperature = 0.0f;
+        _temperatureDecay = 1.0f;
+        _temperatureMin = 0.0f;
     }
 
     public Move ChooseMove(Blocks blocks, List<PieceType> pieces)
@@ -109,7 +150,7 @@ public class Computer : IPlayer
         var actionLogits = output.Probabilities; // Raw network outputs (logits)
         
         // STEP 3: Build list of valid moves with their action indices
-        var validMoves = new List<(Move move, int actionIndex)>();
+        var candidates = new List<CandidateMove>();
         
         for (int pieceIdx = 0; pieceIdx < pieces.Count && pieceIdx < 3; pieceIdx++)
         {
@@ -122,89 +163,92 @@ public class Computer : IPlayer
                     {
                         // Action index: pieceIdx * BoardInputSize + row * GridSize + col
                         int actionIndex = pieceIdx * BoardInputSize + row * Blocks.GridSize + col;
-                        validMoves.Add((new Move(piece, row, col), actionIndex));
+                        var move = new Move(piece, row, col);
+                        var candidateScore = EvaluateCandidateScore(blocks, pieces, pieceIdx, move, actionLogits[actionIndex]);
+                        candidates.Add(new CandidateMove(move, actionIndex, candidateScore));
                     }
                 }
             }
         }
 
-        if (validMoves.Count == 0)
+        if (candidates.Count == 0)
         {
             throw new Exception("No valid moves available for the computer player.");
         }
 
-        int selectedIndex;
-        int selectedActionIndex;
-        Move selectedMove;
+        var rankedCandidates = candidates
+            .OrderByDescending(c => c.Score)
+            .ToList();
 
-        // ε-GREEDY: With probability ε, choose a random valid action
+        CandidateMove selectedCandidate;
+
+        // ε-GREEDY: explore within the strongest few moves rather than blindly anywhere
         if (_random.NextDouble() < _epsilon)
         {
-            // Random exploration
-            selectedIndex = _random.Next(validMoves.Count);
-            selectedMove = validMoves[selectedIndex].move;
-            selectedActionIndex = validMoves[selectedIndex].actionIndex;
+            var explorationPool = Math.Min(SearchBeamWidth, rankedCandidates.Count);
+            selectedCandidate = rankedCandidates[_random.Next(explorationPool)];
         }
         else
         {
-            // STEP 4: Mask invalid actions and apply softmax
-            // Set invalid action logits to very negative so they get ~0 probability
-            var maskedLogits = new float[192];
-            for (int i = 0; i < 192; i++)
+            // Trained networks should be mostly deterministic; during training we keep
+            // some stochasticity to continue exploring promising alternatives.
+            if (_temperature <= 0.10f || rankedCandidates.Count == 1)
             {
-                maskedLogits[i] = -1000f; // Very negative for invalid actions
+                selectedCandidate = rankedCandidates[0];
             }
-            
-            // Set valid action logits (with temperature)
-            foreach (var (move, actionIndex) in validMoves)
+            else
             {
-                maskedLogits[actionIndex] = actionLogits[actionIndex] / _temperature;
+                var logits = rankedCandidates
+                    .Select(c => c.Score / _temperature)
+                    .ToArray();
+                var probabilities = Softmax(logits);
+                selectedCandidate = rankedCandidates[SampleFromDistribution(probabilities)];
             }
-            
-            // Softmax over all 192 (but invalid ones will have ~0 probability)
-            var allProbabilities = Softmax(maskedLogits);
-            
-            // Extract just the valid action probabilities for sampling
-            var probabilities = validMoves.Select(m => allProbabilities[m.actionIndex]).ToArray();
-            
-            // STEP 5: Sample action from policy distribution
-            selectedIndex = SampleFromDistribution(probabilities);
-            selectedMove = validMoves[selectedIndex].move;
-            selectedActionIndex = validMoves[selectedIndex].actionIndex;
         }
         
         // STEP 6: Store (state, action) in current episode - reward will be added later
-        _currentEpisode.Add((state, selectedActionIndex, 0f)); // Reward added in LearnFromMove
+        _currentEpisode.Add((state, selectedCandidate.ActionIndex, 0f)); // Reward added in LearnFromMove
         
         // Decay exploration parameters for less randomness over time
         _epsilon = Math.Max(_epsilonMin, _epsilon * _epsilonDecay);
         _temperature = Math.Max(_temperatureMin, _temperature * _temperatureDecay);
         
-        return selectedMove;
+        return selectedCandidate.Move;
     }
 
     // Call this after a move is made to record the reward (learning happens at episode end)
-    public void LearnFromMove(int scoreBefore, int scoreAfter, bool gameEnded)
+    public void LearnFromMove(int scoreBefore, int scoreAfter, bool gameEnded, PieceType? piece = null)
     {
-        if (_currentEpisode.Count == 0) return;
+        if (!_learningEnabled || _currentEpisode.Count == 0) return;
 
         // Calculate immediate reward for the last action
-        float reward = CalculateReward(scoreBefore, scoreAfter, gameEnded);
+        float reward = CalculateReward(scoreBefore, scoreAfter, gameEnded, piece);
         
-        // Update the reward for the last step in the episode
+        // Rewards can arrive in phases:
+        // 1. immediate score change after the move
+        // 2. terminal penalty if that move leaves the board stuck on the next loop
         var lastStep = _currentEpisode[_currentEpisode.Count - 1];
-        _currentEpisode[_currentEpisode.Count - 1] = (lastStep.state, lastStep.action, reward);
+        _currentEpisode[_currentEpisode.Count - 1] = (lastStep.state, lastStep.action, lastStep.reward + reward);
         
         // DON'T learn yet - wait until episode ends to calculate discounted returns
     }
 
-    private float CalculateReward(int scoreBefore, int scoreAfter, bool gameEnded)
+    private float CalculateReward(int scoreBefore, int scoreAfter, bool gameEnded, PieceType? piece)
     {
-        // SIMPLE IMMEDIATE REWARDS - focus on what just happened
         int scoreGain = scoreAfter - scoreBefore;
-        
-        // Return just the score gain - simple and direct
-        return scoreGain;
+        int placementPoints = piece.HasValue ? piece.Value.GetShape().Count : 0;
+        int lineClearBonus = Math.Max(0, scoreGain - placementPoints);
+
+        // Reward actual clears strongly, keep a small positive signal for making progress,
+        // and penalize moves that immediately end the run.
+        float reward = (placementPoints * 0.15f) + (lineClearBonus * 1.25f);
+
+        if (gameEnded)
+        {
+            reward -= TerminalPenalty;
+        }
+
+        return reward;
     }
 
     /// <summary>
@@ -214,16 +258,13 @@ public class Computer : IPlayer
     /// </summary>
     public void FlushExperienceBuffer()
     {
-        if (_currentEpisode.Count == 0) return;
+        if (!_learningEnabled || _currentEpisode.Count == 0) return;
         
         // Calculate total episode score for experience replay decisions
         float episodeScore = _currentEpisode.Sum(e => e.reward);
-        float baseScore = _currentEpisode.Count; // Minimum score = 1 point per piece placed
-        float bonusScore = episodeScore - baseScore; // Bonus from line clears
         
         // EXPERIENCE REPLAY: Save episodes that got line clear bonuses
-        // Any bonus > 0 means a line was cleared - save these!
-        if (bonusScore > 0 || episodeScore > _bestEpisodeScore * 0.9f)
+        if (episodeScore > 0 || episodeScore > _bestEpisodeScore * 0.9f)
         {
             // Copy the episode for storage
             var episodeCopy = _currentEpisode.Select(e => (e.state.ToArray(), e.action, e.reward)).ToList();
@@ -259,46 +300,33 @@ public class Computer : IPlayer
     private void LearnFromEpisode(List<(float[] state, int action, float reward)> episode, int repeatCount)
     {
         if (episode.Count == 0) return;
-        
-        // STEP 1: Calculate per-step rewards (not discounted - look at immediate effect)
-        // Find which moves actually caused line clears (reward > 1)
-        var lineClearMoves = new List<int>();
-        for (int t = 0; t < episode.Count; t++)
+
+        // Calculate discounted returns so setup moves that enable later clears
+        // also receive credit.
+        var returns = new float[episode.Count];
+        float runningReturn = 0f;
+        for (int t = episode.Count - 1; t >= 0; t--)
         {
-            if (episode[t].reward > 1) // More than just placement = line clear happened
-            {
-                lineClearMoves.Add(t);
-            }
+            runningReturn = episode[t].reward + (_gamma * runningReturn);
+            returns[t] = runningReturn;
         }
-        
-        // STEP 2: Determine if this was a "good" episode (had line clears)
-        float totalReward = episode.Sum(e => e.reward);
-        float baseReward = episode.Count; // 1 point per piece minimum
-        bool wasSuccessful = totalReward > baseReward; // Got bonus points = line cleared
-        
-        // STEP 3: Only learn from moves that ACTUALLY caused line clears
-        // This avoids conflicting signals for moves where any action is equally good
-        if (!wasSuccessful)
+
+        var averageReturn = returns.Average();
+        var promisingMoves = Enumerable.Range(0, episode.Count)
+            .Where(t => returns[t] >= averageReturn || episode[t].reward > 0.5f)
+            .OrderByDescending(t => returns[t])
+            .ToList();
+
+        if (promisingMoves.Count == 0)
         {
-            // Don't learn from failed games
-            return;
+            promisingMoves.Add(Array.IndexOf(returns, returns.Max()));
         }
-        
-        // No line clear moves identified? Use last move as fallback
-        if (lineClearMoves.Count == 0 && episode.Count > 0)
-        {
-            lineClearMoves.Add(episode.Count - 1);
-        }
-        
+
         for (int repeat = 0; repeat < repeatCount; repeat++)
         {
-            // Only train on moves that caused line clears
-            // The setup move has no consistent "right answer" - any column works for move 1
-            foreach (var clearMoveIdx in lineClearMoves)
+            foreach (var moveIdx in promisingMoves)
             {
-                // Train ONLY on the move that cleared the line
-                // This state has clear information: "board has pieces, place here to clear"
-                TrainOnMove(episode, clearMoveIdx);
+                TrainOnMove(episode, moveIdx);
             }
         }
     }
@@ -454,6 +482,340 @@ public class Computer : IPlayer
         _neuralNetwork.Save(filePath);
     }
 
+    private float EvaluateCandidateScore(Blocks blocks, List<PieceType> pieces, int pieceIndex, Move move, float policyPrior)
+    {
+        var nextBoard = blocks.Clone();
+        var scoreBefore = nextBoard.Score;
+
+        if (!nextBoard.PlacePiece(move.Piece, move.Row, move.Col))
+        {
+            return float.NegativeInfinity;
+        }
+
+        var remainingPieces = new List<PieceType>(pieces);
+        remainingPieces.RemoveAt(pieceIndex);
+
+        var immediateGain = nextBoard.Score - scoreBefore;
+        var placementSize = move.Piece.GetShape().Count;
+        var lineClearBonus = Math.Max(0, immediateGain - placementSize);
+
+        if (remainingPieces.Count > 0 && nextBoard.IsGameOver(remainingPieces))
+        {
+            return (immediateGain * 1.5f) + (lineClearBonus * 4.0f) - DeadEndPenalty;
+        }
+
+        var boardQuality = EvaluateBoardState(nextBoard, remainingPieces);
+        var projectedSequenceScore = remainingPieces.Count > 0
+            ? SearchBestSequence(nextBoard, remainingPieces, SearchDepth - 1)
+            : 0f;
+        var normalizedPolicyPrior = MathF.Tanh(policyPrior);
+
+        return (immediateGain * 1.75f)
+            + (lineClearBonus * 5.0f)
+            + (boardQuality * 1.35f)
+            + (projectedSequenceScore * 0.90f)
+            + (normalizedPolicyPrior * 0.10f);
+    }
+
+    private float SearchBestSequence(Blocks blocks, List<PieceType> pieces, int depth)
+    {
+        if (pieces.Count == 0)
+        {
+            return EvaluateBoardState(blocks, pieces);
+        }
+
+        var candidates = new List<(Blocks board, List<PieceType> remainingPieces, float score)>();
+
+        for (int pieceIdx = 0; pieceIdx < pieces.Count; pieceIdx++)
+        {
+            var piece = pieces[pieceIdx];
+            for (int row = 0; row < Blocks.GridSize; row++)
+            {
+                for (int col = 0; col < Blocks.GridSize; col++)
+                {
+                    if (!blocks.CanPlacePiece(piece, row, col))
+                    {
+                        continue;
+                    }
+
+                    var nextBoard = blocks.Clone();
+                    var scoreBefore = nextBoard.Score;
+                    nextBoard.PlacePiece(piece, row, col);
+
+                    var remainingPieces = new List<PieceType>(pieces);
+                    remainingPieces.RemoveAt(pieceIdx);
+
+                    var immediateGain = nextBoard.Score - scoreBefore;
+                    var score = (immediateGain * 3.0f) + EvaluateBoardState(nextBoard, remainingPieces);
+                    candidates.Add((nextBoard, remainingPieces, score));
+                }
+            }
+        }
+
+        if (candidates.Count == 0)
+        {
+            return -DeadEndPenalty - (pieces.Count * 8f);
+        }
+
+        float bestScore = float.NegativeInfinity;
+        foreach (var candidate in candidates.OrderByDescending(c => c.score).Take(SearchBeamWidth))
+        {
+            var totalScore = candidate.score;
+            if (depth > 0 && candidate.remainingPieces.Count > 0)
+            {
+                totalScore += 0.55f * SearchBestSequence(candidate.board, candidate.remainingPieces, depth - 1);
+            }
+
+            bestScore = Math.Max(bestScore, totalScore);
+        }
+
+        return bestScore;
+    }
+
+    private float EvaluateBoardState(Blocks blocks, IReadOnlyList<PieceType> remainingPieces)
+    {
+        var grid = blocks.GetGrid();
+        var emptyCells = 0;
+        var isolatedEmptyCells = 0;
+        float linePotential = 0f;
+
+        for (int row = 0; row < Blocks.GridSize; row++)
+        {
+            int filled = 0;
+            for (int col = 0; col < Blocks.GridSize; col++)
+            {
+                if (grid[row][col] != 0)
+                {
+                    filled++;
+                }
+            }
+
+            linePotential += GetLinePotential(filled);
+        }
+
+        for (int col = 0; col < Blocks.GridSize; col++)
+        {
+            int filled = 0;
+            for (int row = 0; row < Blocks.GridSize; row++)
+            {
+                if (grid[row][col] != 0)
+                {
+                    filled++;
+                }
+            }
+
+            linePotential += GetLinePotential(filled);
+        }
+
+        for (int row = 0; row < Blocks.GridSize; row++)
+        {
+            for (int col = 0; col < Blocks.GridSize; col++)
+            {
+                if (grid[row][col] == 0)
+                {
+                    emptyCells++;
+                    if (GetOpenNeighborCount(grid, row, col) <= 1)
+                    {
+                        isolatedEmptyCells++;
+                    }
+                }
+            }
+        }
+
+        var (regionCount, largestRegion, smallPocketCells) = GetEmptyRegionMetrics(grid);
+        var openSquares2x2 = CountOpenSquares(grid, 2);
+        var openSquares3x3 = CountOpenSquares(grid, 3);
+        var futureMobility = EstimateFutureMobility(blocks);
+
+        float mobilityScore = 0f;
+        bool canPlaceAllRemaining = true;
+        foreach (var piece in remainingPieces)
+        {
+            var placements = CountPlacements(blocks, piece);
+            mobilityScore += Math.Min(placements, 12);
+            if (placements == 0)
+            {
+                canPlaceAllRemaining = false;
+            }
+        }
+
+        return (emptyCells * 0.08f)
+            + (largestRegion * 0.80f)
+            + (openSquares2x2 * 0.35f)
+            + (openSquares3x3 * 0.90f)
+            + (futureMobility * 0.55f)
+            + (mobilityScore * 0.45f)
+            + (linePotential * 1.20f)
+            - (isolatedEmptyCells * 1.20f)
+            - (smallPocketCells * 1.40f)
+            - ((regionCount - 1) * 4.5f)
+            + (canPlaceAllRemaining ? 8f : -18f);
+    }
+
+    private int CountPlacements(Blocks blocks, PieceType piece)
+    {
+        int placements = 0;
+        for (int row = 0; row < Blocks.GridSize; row++)
+        {
+            for (int col = 0; col < Blocks.GridSize; col++)
+            {
+                if (blocks.CanPlacePiece(piece, row, col))
+                {
+                    placements++;
+                }
+            }
+        }
+
+        return placements;
+    }
+
+    private float EstimateFutureMobility(Blocks blocks)
+    {
+        float weightedPlacements = 0f;
+        float fitVariety = 0f;
+
+        foreach (var (piece, weight) in FutureMobilityPieces)
+        {
+            var placements = CountPlacements(blocks, piece);
+            weightedPlacements += Math.Min(placements, 8) * weight;
+
+            if (placements > 0)
+            {
+                fitVariety += weight;
+            }
+            else
+            {
+                weightedPlacements -= weight * 2.0f;
+            }
+        }
+
+        return weightedPlacements + (fitVariety * 2.5f);
+    }
+
+    private static float GetLinePotential(int filled)
+    {
+        var gaps = Blocks.GridSize - filled;
+        return gaps switch
+        {
+            0 => 20f,
+            1 => 12f,
+            2 => 6f,
+            3 => 2f,
+            _ => filled * 0.20f
+        };
+    }
+
+    private (int regionCount, int largestRegion, int smallPocketCells) GetEmptyRegionMetrics(int[][] grid)
+    {
+        var visited = new bool[Blocks.GridSize, Blocks.GridSize];
+        var regionCount = 0;
+        var largestRegion = 0;
+        var smallPocketCells = 0;
+        var directions = new (int dr, int dc)[] { (-1, 0), (1, 0), (0, -1), (0, 1) };
+
+        for (int row = 0; row < Blocks.GridSize; row++)
+        {
+            for (int col = 0; col < Blocks.GridSize; col++)
+            {
+                if (grid[row][col] != 0 || visited[row, col])
+                {
+                    continue;
+                }
+
+                regionCount++;
+                var regionSize = 0;
+                var queue = new Queue<(int row, int col)>();
+                queue.Enqueue((row, col));
+                visited[row, col] = true;
+
+                while (queue.Count > 0)
+                {
+                    var current = queue.Dequeue();
+                    regionSize++;
+
+                    foreach (var (dr, dc) in directions)
+                    {
+                        var nextRow = current.row + dr;
+                        var nextCol = current.col + dc;
+
+                        if (nextRow < 0 ||
+                            nextRow >= Blocks.GridSize ||
+                            nextCol < 0 ||
+                            nextCol >= Blocks.GridSize ||
+                            visited[nextRow, nextCol] ||
+                            grid[nextRow][nextCol] != 0)
+                        {
+                            continue;
+                        }
+
+                        visited[nextRow, nextCol] = true;
+                        queue.Enqueue((nextRow, nextCol));
+                    }
+                }
+
+                largestRegion = Math.Max(largestRegion, regionSize);
+                if (regionSize <= 3)
+                {
+                    smallPocketCells += regionSize;
+                }
+            }
+        }
+
+        return (regionCount, largestRegion, smallPocketCells);
+    }
+
+    private int CountOpenSquares(int[][] grid, int size)
+    {
+        int openSquares = 0;
+        for (int row = 0; row <= Blocks.GridSize - size; row++)
+        {
+            for (int col = 0; col <= Blocks.GridSize - size; col++)
+            {
+                bool isOpen = true;
+                for (int dr = 0; dr < size && isOpen; dr++)
+                {
+                    for (int dc = 0; dc < size; dc++)
+                    {
+                        if (grid[row + dr][col + dc] != 0)
+                        {
+                            isOpen = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (isOpen)
+                {
+                    openSquares++;
+                }
+            }
+        }
+
+        return openSquares;
+    }
+
+    private int GetOpenNeighborCount(int[][] grid, int row, int col)
+    {
+        int openNeighbors = 0;
+        var directions = new (int dr, int dc)[] { (-1, 0), (1, 0), (0, -1), (0, 1) };
+
+        foreach (var (dr, dc) in directions)
+        {
+            int nextRow = row + dr;
+            int nextCol = col + dc;
+            if (nextRow >= 0 &&
+                nextRow < grid.Length &&
+                nextCol >= 0 &&
+                nextCol < grid[nextRow].Length &&
+                grid[nextRow][nextCol] == 0)
+            {
+                openNeighbors++;
+            }
+        }
+
+        return openNeighbors;
+    }
+
     // ============================================================================
     // HELPER METHODS - Piece Features
     // ============================================================================
@@ -478,35 +840,8 @@ public class Computer : IPlayer
 
     private int GetPieceCellCount(PieceType piece)
     {
-        return piece switch
-        {
-            PieceType.Single => 1,
-            PieceType.Vertical2 => 2,
-            PieceType.Horizontal2 => 2,
-            PieceType.Vertical3 => 3,
-            PieceType.Horizontal3 => 3,
-            PieceType.CornerTopLeft => 3,
-            PieceType.CornerTopRight => 3,
-            PieceType.CornerBottomLeft => 3,
-            PieceType.CornerBottomRight => 3,
-            PieceType.TUp => 4,
-            PieceType.TDown => 4,
-            PieceType.TLeft => 4,
-            PieceType.TRight => 4,
-            PieceType.Square2x2 => 4,
-            PieceType.Vertical4 => 4,
-            PieceType.Horizontal4 => 4,
-            PieceType.ZLeft => 4,
-            PieceType.ZRight => 4,
-            PieceType.ZUp => 4,
-            PieceType.ZDown => 4,
-            PieceType.Vertical5 => 5,
-            PieceType.Horizontal5 => 5,
-            PieceType.Vertical2x3 => 6,
-            PieceType.Horizontal2x3 => 6,
-            PieceType.Square3x3 => 9,
-            _ => 3
-        };
+        var shape = piece.GetShape();
+        return shape?.Count ?? 0;
     }
 
     private float GetPieceCompactness(PieceType piece)

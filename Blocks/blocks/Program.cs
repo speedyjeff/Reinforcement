@@ -242,7 +242,7 @@ class Program
             pieces.Remove(move.Piece);
             
             // Provide learning feedback for this move
-            computer.LearnFromMove(scoreBefore, blocks.Score, false);
+            computer.LearnFromMove(scoreBefore, blocks.Score, false, move.Piece);
         }
     }
 

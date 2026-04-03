@@ -19,6 +19,14 @@ public class ComputerTrainer
         _random = new Random();
     }
 
+    public static FitnessResult Evaluate(Computer computer, int gameCount = 100)
+    {
+        if (computer == null) throw new ArgumentNullException(nameof(computer));
+        if (gameCount <= 0) throw new ArgumentOutOfRangeException(nameof(gameCount));
+
+        return SimulateGame(computer, gameCount);
+    }
+
     /// <summary>
     /// Trains a single neural network through extensive gameplay
     /// Focus on volume: One network plays thousands of games, learning continuously via policy gradients
@@ -29,9 +37,9 @@ public class ComputerTrainer
     public Computer Train(int totalGames = 10000, int reportInterval = 100)
     {
         Console.WriteLine($"Starting policy gradient training: {totalGames:N0} games");
-        Console.WriteLine($"Network: 112 inputs → [192, 128, 64] → 192 outputs");
-        Console.WriteLine($"Inputs: board(64) + pieces(48 from 3×4×4)");
-        Console.WriteLine($"Strategy: MINIMAL encoding - network must discover strategy\n");
+        Console.WriteLine($"Network: 139 inputs → [128, 64] → 192 outputs");
+        Console.WriteLine($"Inputs: board(64) + pieces(75 from 3×5×5)");
+        Console.WriteLine($"Strategy: policy prior + short-horizon lookahead\n");
 
         // Create single network that will learn continuously
         var computer = new Computer();
@@ -191,7 +199,7 @@ public class ComputerTrainer
                     pieces.Remove(move.Piece);
                     
                     // Provide learning feedback for this move
-                    computer.LearnFromMove(scoreBefore, scoreAfter, false);
+                    computer.LearnFromMove(scoreBefore, scoreAfter, false, move.Piece);
                 }
                 else
                 {
