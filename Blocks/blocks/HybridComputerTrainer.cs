@@ -13,7 +13,7 @@ public class FitnessResult
 }
 
 /// <summary>
-/// Trainer and evaluator for the hybrid search-assisted player.
+/// Trainer and evaluator for the main hybrid search-assisted player.
 ///
 /// This stays separate from <see cref="ComputerClassicRLTrainer"/> because the hybrid player is a different
 /// implementation with a different learning loop: it combines neural guidance with heuristic rescoring and shallow

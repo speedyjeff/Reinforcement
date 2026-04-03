@@ -5,7 +5,7 @@ using blocks.engine;
 using Learning;
 
 /// <summary>
-/// Hybrid Blocks agent that combines a learned policy prior with explicit move planning.
+/// Hybrid Blocks player that combines a learned policy prior with explicit move planning.
 ///
 /// Methodology:
 /// 1. Encode the current board plus the three available piece shapes into a 139-value input vector.

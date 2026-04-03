@@ -7,6 +7,8 @@
 - an experimental **classic RL / neural-only** computer player
 - training and puzzle-test modes for both research and debugging
 
+For measured benchmark data and step-by-step reproduction commands, see [RESULTS.md](RESULTS.md).
+
 ## Game rules
 
 The core engine lives in `Blocks\blocks.engine\Blocks.cs`.
@@ -71,7 +73,7 @@ When you launch the app, these are the available modes:
 
 The project intentionally contains **two different AI philosophies**.
 
-### 1. Hybrid computer player (`HybridComputerPlayer` in `Computer.cs`)
+### 1. Hybrid computer player (`HybridComputerPlayer` in `HybridComputerPlayer.cs`)
 
 This is the **strongest** player in the project and the best choice if you want the AI to look smart while playing.
 
@@ -163,7 +165,7 @@ It is **not yet as strong or as consistently intelligent-looking as the hybrid p
 - **7** = trained classic RL player from disk
 - **8** = train and save the classic RL model
 
-### 3. Experimental Monte Carlo policy player (`MonteCarloPolicyComputerPlayer` in `Computer2.cs`)
+### 3. Experimental Monte Carlo policy player (`MonteCarloPolicyComputerPlayer` in `MonteCarloPolicyComputerPlayer.cs`)
 
 This older experimental player learns position preferences from whole-game outcomes using a Monte Carlo style update.
 It is kept in the repository for experimentation and comparison, but it is not the main AI path exposed in the menu.
@@ -219,9 +221,9 @@ Example:
 | `Blocks\blocks.engine\Blocks.cs` | Core game rules, placement checks, scoring, line clearing |
 | `Blocks\blocks.engine\BlockGenerator.cs` | Random piece generation and fixed test scenarios |
 | `Blocks\blocks\Program.cs` | Console menu and main game loop |
-| `Blocks\blocks\Computer.cs` | `HybridComputerPlayer`, the main hybrid AI player |
-| `Blocks\blocks\ComputerTrainer.cs` | `HybridComputerTrainer`, training/evaluation for the hybrid player |
-| `Blocks\blocks\Computer2.cs` | `MonteCarloPolicyComputerPlayer`, an older experimental Monte Carlo policy player |
+| `Blocks\blocks\HybridComputerPlayer.cs` | `HybridComputerPlayer`, the main hybrid AI player |
+| `Blocks\blocks\HybridComputerTrainer.cs` | `HybridComputerTrainer`, training/evaluation for the hybrid player |
+| `Blocks\blocks\MonteCarloPolicyComputerPlayer.cs` | `MonteCarloPolicyComputerPlayer`, an older experimental Monte Carlo policy player |
 | `Blocks\blocks\ComputerClassicRL.cs` | Neural-only RL player |
 | `Blocks\blocks\ComputerClassicRLTrainer.cs` | Training/evaluation for the neural-only RL player |
 

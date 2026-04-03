@@ -5,7 +5,7 @@ using blocks.engine;
 using Learning;
 
 /// <summary>
-/// MonteCarloPolicyComputerPlayer: a simpler reinforcement learning agent using Monte Carlo policy gradient.
+/// MonteCarloPolicyComputerPlayer: an experimental reinforcement learning agent using Monte Carlo policy gradient.
 /// 
 /// Key Design Principles:
 /// 1. PIECE-AGNOSTIC INPUTS: Only sees board occupancy (64 binary values)

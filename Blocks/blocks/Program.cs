@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using blocks.engine;
 using Learning;
 
@@ -7,6 +8,11 @@ class Program
 {
     static int Main(string[] args)
     {
+        if (args.Length > 0)
+        {
+            return RunCommandLine(args);
+        }
+
         IPlayer player;
         
         // Choose mode
@@ -114,6 +120,283 @@ class Program
     }
 
     #region private
+
+    private static int RunCommandLine(string[] args)
+    {
+        var options = ParseCommandLineOptions(args);
+        var mode = GetOption(options, "mode");
+
+        if (string.IsNullOrWhiteSpace(mode) ||
+            string.Equals(mode, "help", StringComparison.OrdinalIgnoreCase) ||
+            options.ContainsKey("help"))
+        {
+            PrintCommandLineHelp();
+            return 0;
+        }
+
+        try
+        {
+            switch (mode.Trim().ToLowerInvariant())
+            {
+                case "watch-hybrid":
+                case "play-hybrid":
+                    PlaySingleGame(new HybridComputerPlayer());
+                    return 0;
+
+                case "watch-hybrid-trained":
+                case "play-hybrid-trained":
+                    PlaySingleGame(new HybridComputerPlayer(NeuralNetwork.Load(GetOptionOrDefault(options, "network", "trained_network.txt"))));
+                    return 0;
+
+                case "train-hybrid":
+                    {
+                        var trainer = new HybridComputerTrainer();
+                        var totalGames = GetIntOption(options, "games", 5000);
+                        var reportInterval = GetIntOption(options, "report-interval", 100);
+                        var savePath = GetOptionOrDefault(options, "save", "trained_network.txt");
+                        var trainedComputer = trainer.Train(totalGames, reportInterval);
+                        trainer.SaveNetwork(trainedComputer, savePath);
+                        Console.WriteLine($"Saved hybrid network to '{savePath}'.");
+                        return 0;
+                    }
+
+                case "eval-hybrid":
+                    {
+                        var games = GetIntOption(options, "games", 20);
+                        var networkPath = GetOption(options, "network");
+                        var player = string.IsNullOrWhiteSpace(networkPath)
+                            ? new HybridComputerPlayer()
+                            : new HybridComputerPlayer(NeuralNetwork.Load(networkPath));
+                        PrintFitnessResult("HybridComputerPlayer", HybridComputerTrainer.Evaluate(player, games));
+                        return 0;
+                    }
+
+                case "watch-classic-rl":
+                case "play-classic-rl":
+                    PlaySingleGame(new ComputerClassicRL());
+                    return 0;
+
+                case "watch-classic-rl-trained":
+                case "play-classic-rl-trained":
+                    PlaySingleGame(new ComputerClassicRL(NeuralNetwork.Load(GetOptionOrDefault(options, "network", "trained_network_classic_rl.txt"))));
+                    return 0;
+
+                case "train-classic-rl":
+                    {
+                        var trainer = new ComputerClassicRLTrainer();
+                        var totalGames = GetIntOption(options, "games", 5000);
+                        var reportInterval = GetIntOption(options, "report-interval", 100);
+                        var savePath = GetOptionOrDefault(options, "save", "trained_network_classic_rl.txt");
+                        var trainedComputer = trainer.Train(totalGames, reportInterval);
+                        trainer.SaveNetwork(trainedComputer, savePath);
+                        Console.WriteLine($"Saved classic RL network to '{savePath}'.");
+                        return 0;
+                    }
+
+                case "eval-classic-rl":
+                    {
+                        var games = GetIntOption(options, "games", 20);
+                        var networkPath = GetOption(options, "network");
+                        var player = string.IsNullOrWhiteSpace(networkPath)
+                            ? new ComputerClassicRL()
+                            : new ComputerClassicRL(NeuralNetwork.Load(networkPath));
+                        var label = string.IsNullOrWhiteSpace(networkPath)
+                            ? "ComputerClassicRL (fresh)"
+                            : $"ComputerClassicRL ({Path.GetFileName(networkPath)})";
+                        PrintFitnessResult(label, ComputerClassicRLTrainer.Evaluate(player, games));
+                        return 0;
+                    }
+
+                case "eval-monte-carlo":
+                    {
+                        var games = GetIntOption(options, "games", 20);
+                        var trainGames = GetIntOption(options, "train-games", 0);
+                        var player = new MonteCarloPolicyComputerPlayer();
+
+                        for (var i = 0; i < trainGames; i++)
+                        {
+                            PlayMonteCarloEpisode(player, learn: true);
+                        }
+
+                        var label = trainGames > 0
+                            ? $"MonteCarloPolicyComputerPlayer (trained {trainGames} episodes)"
+                            : "MonteCarloPolicyComputerPlayer (fresh)";
+                        PrintFitnessResult(label, EvaluateMonteCarlo(player, games));
+                        return 0;
+                    }
+
+                default:
+                    Console.WriteLine($"Unknown mode '{mode}'.");
+                    Console.WriteLine();
+                    PrintCommandLineHelp();
+                    return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            return 1;
+        }
+    }
+
+    private static Dictionary<string, string> ParseCommandLineOptions(string[] args)
+    {
+        var options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+
+            if (!arg.StartsWith("--", StringComparison.Ordinal))
+            {
+                if (!options.ContainsKey("mode"))
+                {
+                    options["mode"] = arg;
+                }
+
+                continue;
+            }
+
+            var key = arg.Substring(2);
+            var value = "true";
+            var equalsIndex = key.IndexOf('=');
+
+            if (equalsIndex >= 0)
+            {
+                value = key.Substring(equalsIndex + 1);
+                key = key.Substring(0, equalsIndex);
+            }
+            else if (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+            {
+                value = args[++i];
+            }
+
+            options[key] = value;
+        }
+
+        return options;
+    }
+
+    private static string? GetOption(Dictionary<string, string> options, string key)
+    {
+        return options.TryGetValue(key, out var value) ? value : null;
+    }
+
+    private static string GetOptionOrDefault(Dictionary<string, string> options, string key, string defaultValue)
+    {
+        if (options.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        return defaultValue;
+    }
+
+    private static int GetIntOption(Dictionary<string, string> options, string key, int defaultValue)
+    {
+        if (!options.TryGetValue(key, out var value) || int.TryParse(value, out var parsed) == false)
+        {
+            return defaultValue;
+        }
+
+        return parsed;
+    }
+
+    private static void PrintCommandLineHelp()
+    {
+        Console.WriteLine("Blocks command line modes:");
+        Console.WriteLine("  --mode watch-hybrid");
+        Console.WriteLine("  --mode watch-hybrid-trained [--network trained_network.txt]");
+        Console.WriteLine("  --mode train-hybrid [--games 5000] [--report-interval 100] [--save trained_network.txt]");
+        Console.WriteLine("  --mode eval-hybrid [--games 20] [--network trained_network.txt]");
+        Console.WriteLine("  --mode watch-classic-rl");
+        Console.WriteLine("  --mode watch-classic-rl-trained [--network trained_network_classic_rl.txt]");
+        Console.WriteLine("  --mode train-classic-rl [--games 5000] [--report-interval 100] [--save trained_network_classic_rl.txt]");
+        Console.WriteLine("  --mode eval-classic-rl [--games 20] [--network trained_network_classic_rl.txt]");
+        Console.WriteLine("  --mode eval-monte-carlo [--games 20] [--train-games 500]");
+    }
+
+    private static void PrintFitnessResult(string label, FitnessResult result)
+    {
+        Console.WriteLine($"{label}: AvgFitness={result.AvgFitness:F2}, MaxFitness={result.MaxFitness:F0}, AvgPiecesPlayed={result.AvgPiecesPlayed:F2}, MaxPiecesPlayed={result.MaxPiecesPlayed}");
+    }
+
+    private static FitnessResult EvaluateMonteCarlo(MonteCarloPolicyComputerPlayer player, int gameCount)
+    {
+        if (gameCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(gameCount));
+        }
+
+        var totalFitness = 0d;
+        var totalPiecesPlayed = 0;
+        var maxFitness = 0d;
+        var maxPiecesPlayed = 0;
+
+        for (var game = 0; game < gameCount; game++)
+        {
+            var (score, piecesPlayed) = PlayMonteCarloEpisode(player, learn: false);
+            totalFitness += score;
+            totalPiecesPlayed += piecesPlayed;
+            maxFitness = Math.Max(maxFitness, score);
+            maxPiecesPlayed = Math.Max(maxPiecesPlayed, piecesPlayed);
+        }
+
+        return new FitnessResult()
+        {
+            AvgFitness = totalFitness / gameCount,
+            MaxFitness = maxFitness,
+            AvgPiecesPlayed = totalPiecesPlayed / (double)gameCount,
+            MaxPiecesPlayed = maxPiecesPlayed
+        };
+    }
+
+    private static (int score, int piecesPlayed) PlayMonteCarloEpisode(MonteCarloPolicyComputerPlayer player, bool learn)
+    {
+        var blocks = new Blocks();
+        var generator = new BlockGenerator();
+        var pieces = new List<PieceType>();
+
+        while (blocks.PiecesPlayed < 1000)
+        {
+            if (pieces.Count == 0)
+            {
+                for (var i = 0; i < Blocks.NumPiecesInSet; i++)
+                {
+                    pieces.Add(generator.GetNextPiece());
+                }
+            }
+
+            if (blocks.IsGameOver(pieces))
+            {
+                if (learn)
+                {
+                    player.LearnFromGame(blocks.Score);
+                }
+                else
+                {
+                    player.ResetTrajectory();
+                }
+
+                break;
+            }
+
+            var move = player.ChooseMove(blocks, pieces);
+            if (!blocks.PlacePiece(move.Piece, move.Row, move.Col))
+            {
+                throw new Exception("MonteCarloPolicyComputerPlayer selected an invalid move.");
+            }
+
+            pieces.Remove(move.Piece);
+        }
+
+        if (!learn)
+        {
+            player.ResetTrajectory();
+        }
+
+        return (blocks.Score, blocks.PiecesPlayed);
+    }
 
     /// <summary>
     /// Runs test scenarios to verify the AI can learn optimal solutions for simple puzzles.
