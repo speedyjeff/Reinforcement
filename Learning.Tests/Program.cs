@@ -31,11 +31,23 @@ namespace Learning
             NeuralNetworkMathTests.dOfReLuTest();
             NeuralNetworkMathTests.SoftmaxTest();
             NeuralNetworkMathTests.SoftmaxTest2();
+            NeuralNetworkMathTests.DotTest();
             NeuralNetworkMathTests.DotFirstParamTTest();
             NeuralNetworkMathTests.DotSecondParamTTest();
             NeuralNetworkMathTests.SubtractTest();
             NeuralNetworkMathTests.SubtractTest2();
             NeuralNetworkMathTests.MultiplyTest();
+            NeuralNetworkMathTests.AddTest();
+
+            Console.WriteLine("neural network math SIMD tests (large arrays)...");
+            NeuralNetworkMathTests.ReLuTestLargeArray();
+            NeuralNetworkMathTests.dOfReLuTestLargeArray();
+            NeuralNetworkMathTests.SoftmaxTestLargeArray();
+            NeuralNetworkMathTests.DotTestLargeArray();
+            NeuralNetworkMathTests.DotFirstParamTTestLargeArray();
+            NeuralNetworkMathTests.SubtractTestLargeArray();
+            NeuralNetworkMathTests.MultiplyTestLargeArray();
+            NeuralNetworkMathTests.AddTestLargeArray();
 
             if (true)
             {
@@ -52,6 +64,7 @@ namespace Learning
                     NeuralNetworkMathTests.SubtractTestPerf(iterations);
                     NeuralNetworkMathTests.MultiplyTestPerf(iterations);
                     NeuralNetworkMathTests.MultiplyTestPerf2(iterations);
+                    NeuralNetworkMathTests.AddTestPerf(iterations);
                 }
                 timer.Stop();
                 Console.WriteLine($"{timer.ElapsedMilliseconds} ms");
