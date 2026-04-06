@@ -1,5 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Numerics.Tensors;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -331,7 +335,7 @@ namespace Learning
             DotSecondParamT(dZlast, output.A[layer - 1], ref AggregatedUpdate.dW[layer]);
 
             // float dB = dZ (update the aggregated updates)
-            for (int i=0; i<dZlast.Length; i++) AggregatedUpdate.dB[layer][i] += dZlast[i];
+            Add(ref AggregatedUpdate.dB[layer], dZlast);
 
             // compute the rest in context of these values, backwards
             for (layer = Weight.Length - 2; layer >= 0; layer--)
@@ -344,7 +348,7 @@ namespace Learning
                 DotSecondParamT(dZcurrent, (layer == 0) ? output.Input : output.A[layer - 1], ref AggregatedUpdate.dW[layer]);
 
                 // float dB = dZ (update the aggregated updates)
-                for (int i = 0; i < dZcurrent.Length; i++) AggregatedUpdate.dB[layer][i] += dZcurrent[i];
+                Add(ref AggregatedUpdate.dB[layer], dZcurrent);
 
                 // pass dZcurrent calculation to next layer
                 dZlast = dZcurrent;
@@ -368,7 +372,7 @@ namespace Learning
                         Multiply(LearningRate / (float)UpdateCount, ref AggregatedUpdate.dW[layer][neuron]);
                         Subtract(ref Weight[layer][neuron], AggregatedUpdate.dW[layer][neuron]);
                         // clear
-                        for (int i = 0; i < AggregatedUpdate.dW[layer][neuron].Length; i++) AggregatedUpdate.dW[layer][neuron][i] = 0f;
+                        Array.Clear(AggregatedUpdate.dW[layer][neuron], 0, AggregatedUpdate.dW[layer][neuron].Length);
 
                         // B = B - alpha * dB
                         Bias[layer][neuron][0] = Bias[layer][neuron][0] - ((LearningRate / (float)UpdateCount) * AggregatedUpdate.dB[layer][neuron]);
@@ -822,7 +826,7 @@ namespace Learning
             // if x <= 0 : 0
             //    x >  0 : x
             var result = new float[a.Length];
-            for (int i = 0; i < a.Length; i++) result[i] = Math.Max(0f, a[i]);
+            TensorPrimitives.Max(a, result, result);
             return result;
         }
 
@@ -832,23 +836,81 @@ namespace Learning
             // if x <= 0 : 0
             //    x >  0 : 1
             var result = new float[a.Length];
-            for (int i = 0; i < a.Length; i++) result[i] = (a[i] > 0 ? 1 : 0);
+            ref var src = ref MemoryMarshal.GetArrayDataReference(a);
+            ref var dst = ref MemoryMarshal.GetArrayDataReference(result);
+            uint i = 0;
+            uint length = (uint)a.Length;
+
+            if (Vector512.IsHardwareAccelerated && Vector512<float>.IsSupported)
+            {
+                var zero = Vector512<float>.Zero;
+                var one = Vector512.Create(1f);
+                uint vec512Count = (uint)Vector512<float>.Count;
+                while (i + vec512Count <= length)
+                {
+                    var vec = Vector512.LoadUnsafe(ref src, i);
+                    var mask = Vector512.GreaterThan(vec, zero);
+                    Vector512.ConditionalSelect(mask, one, zero).StoreUnsafe(ref dst, i);
+                    i += vec512Count;
+                }
+            }
+            else if (Vector256.IsHardwareAccelerated && Vector256<float>.IsSupported)
+            {
+                var zero = Vector256<float>.Zero;
+                var one = Vector256.Create(1f);
+                uint vec256Count = (uint)Vector256<float>.Count;
+                while (i + vec256Count <= length)
+                {
+                    var vec = Vector256.LoadUnsafe(ref src, i);
+                    var mask = Vector256.GreaterThan(vec, zero);
+                    Vector256.ConditionalSelect(mask, one, zero).StoreUnsafe(ref dst, i);
+                    i += vec256Count;
+                }
+            }
+            else if (Vector128.IsHardwareAccelerated && Vector128<float>.IsSupported)
+            {
+                var zero = Vector128<float>.Zero;
+                var one = Vector128.Create(1f);
+                uint vec128Count = (uint)Vector128<float>.Count;
+                while (i + vec128Count <= length)
+                {
+                    var vec = Vector128.LoadUnsafe(ref src, i);
+                    var mask = Vector128.GreaterThan(vec, zero);
+                    Vector128.ConditionalSelect(mask, one, zero).StoreUnsafe(ref dst, i);
+                    i += vec128Count;
+                }
+            }
+            // Scalar fallback for remaining elements
+            for (; i < length; i++) result[i] = (a[i] > 0 ? 1 : 0);
+
             return result;
         }
 
         protected static float[] Softmax(float[] a)
         {
             // = foreach(var x in a) r += e^(x-max) / sum(e^x-max)
-            var sum = 0f;
-            var max = Single.MinValue;
             var result = new float[a.Length];
+            var max = TensorPrimitives.Max(a);
 
-            // max
-            for (int i = 0; i < a.Length; i++) if (max < a[i]) max = a[i];
             // sum(e^(x-max))
+            TensorPrimitives.Subtract(a, max, result);
+            TensorPrimitives.Exp(result, result);
+            var sum = TensorPrimitives.Sum(result);
+
+            // check for numeric overflow (due to float)
+            if (sum > 0f && !Single.IsNaN(sum) && !Single.IsInfinity(sum))
+            {
+                // e^(x-max) / sum(e^x-max)
+                TensorPrimitives.Divide(result, sum, result);
+                return result;
+            }
+
+            // numerical fallback
+            // sum(e^(x-max))
+            sum = 0f;
             for (int i = 0; i < a.Length; i++)
             {
-                result[i] = (float)Math.Pow(Math.E, a[i] - max);
+                result[i] = MathF.Exp(a[i] - max);
                 sum += result[i];
             }
             // e^(x-max) / sum(e^x-max)
@@ -860,9 +922,20 @@ namespace Learning
         protected static float Dot(float[] a, float[] b)
         {
             if (a.Length != b.Length) throw new Exception("lengths must match");
-            var result = 0f;
+            var result = TensorPrimitives.Dot(a, b);
+
+            // check for numeric overflow (due to float)
+            if (result == result &&
+                result != Single.PositiveInfinity &&
+                result != Single.NegativeInfinity)
+            {
+                return result;
+            }
+
+            // fallback
+            result = 0f;
             var sign = 1;
-            for(int i=0; i<a.Length; i++)
+            for (int i = 0; i < a.Length; i++)
             {
                 result += (a[i] * b[i]);
 
@@ -875,8 +948,8 @@ namespace Learning
             }
 
             // cap
-            if (Single.IsPositiveInfinity(result) || (Single.IsNaN(result) && sign > 0)) result = Single.MaxValue;
-            else if (Single.IsNegativeInfinity(result) || (Single.IsNaN(result) && sign < 0)) result = Single.MinValue;
+            if (Single.IsPositiveInfinity(result) || (Single.IsNaN(result) && sign > 0)) return Single.MaxValue;
+            if (Single.IsNegativeInfinity(result) || (Single.IsNaN(result) && sign < 0)) return Single.MinValue;
 
             return result;
         }
@@ -889,6 +962,28 @@ namespace Learning
             // fake [[,,,],[,,,]] dot [[],[],[]]
             // first parameter is transposed
             var result = new float[a[0].Length];
+            for (int j = 0; j < b.Length; j++)
+            {
+                // keeping the column stable (eg. i - inplicit in the MultiplyAdd call) while
+                // walking the row (eg. j)
+                if (a[j].Length != result.Length) throw new Exception("invalid array lengths");
+                TensorPrimitives.MultiplyAdd(a[j], b[j], result, result);
+            }
+
+            // check for numeric overflow (due to float)
+            var allFinite = true;
+            for (int i = 0; i < result.Length; i++)
+            {
+                if (!Single.IsFinite(result[i])) 
+                {
+                    allFinite = false;
+                    break;
+                }
+            }
+            if (allFinite) return result;
+            
+            // fallback
+            result = new float[a[0].Length];
             for (int i = 0; i < a[0].Length; i++)
             {
                 var sign = 1;
@@ -919,48 +1014,39 @@ namespace Learning
             // second parameter is transposed
             for (int i = 0; i < result.Length; i++)
             {
-                for (int j = 0; j < result[i].Length; j++)
-                {
-                    result[i][j] += a[i] * b[j];
-                }
+                TensorPrimitives.MultiplyAdd(b, a[i], result[i], result[i]);
             }
+        }
+
+        protected static void Add(ref float[] a, float[] b)
+        {
+            if (a.Length != b.Length) throw new Exception("lengths must match");
+            TensorPrimitives.Add(a, b, a);
         }
 
         protected static void Subtract(ref float[] a, float[] b)
         {
             if (a.Length != b.Length) throw new Exception("lengths must match");
-            for (int i = 0; i < a.Length && i < b.Length; i++)
-            {
-                a[i] = (a[i] - b[i]);
-            }
+            TensorPrimitives.Subtract(a, b, a);
         }
 
         protected static float[] Subtract(float[] a, float[] b)
         {
             if (a.Length != b.Length) throw new Exception("lengths must match");
             var result = new float[a.Length];
-            for (int i = 0; i < a.Length && i < b.Length; i++)
-            {
-                result[i] = (a[i] - b[i]);
-            }
+            TensorPrimitives.Subtract(a, b, result);
             return result;
         }
 
         protected static void Multiply(float value, ref float[] a)
         {
-            for(int i=0; i<a.Length; i++)
-            {
-                a[i] = a[i] * value;
-            }
+            TensorPrimitives.Multiply(a, value, a);
         }
 
         protected static void Multiply(ref float[] a, float[] b)
         {
             if (a.Length != b.Length) throw new Exception("lengths must match");
-            for (int i = 0; i < a.Length && i < b.Length; i++)
-            {
-                a[i] = a[i] * b[i];
-            }
+            TensorPrimitives.Multiply(a, b, a);
         }
         #endregion
     }
