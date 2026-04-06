@@ -1,5 +1,5 @@
 ## Triangle Tee Game
-The simple 'Triange Tee Game' is straight forward, but can be a challenge to solve.  The game consists of a triangle game board with 15 holes and 14 golf tees.
+The simple 'Triangle Tee Game' is straight forward, but can be a challenge to solve.  The game consists of a triangle game board with 15 holes and 14 golf tees.
 
 ![game](https://github.com/speedyjeff/Reinforcement/blob/main/TeeGame/media/game.png)
 
@@ -27,15 +27,15 @@ Within all those combinations a few interesting patterns emerged from the soluti
 
  - there are 2 starting moves: 'd->a' and 'f->a'
  - there are 2 finishing moves: 'k->m' and 'o->m'
- - no valid soluiton moves a piece from the position 'e'
+ - no valid solution moves a piece from the position 'e'
 
 This is a Sankey diagram of the first 100 solutions found.
 
 ![sankey](https://github.com/speedyjeff/Reinforcement/blob/main/TeeGame/media/sankey.png)
 
-* Note: the numbers are placeholders to represent state transitions, their actual values is not particuarly important (see example solutions above).
+* Note: the numbers are placeholders to represent state transitions, their actual values is not particularly important (see example solutions above).
 
-It illistrates the consistency of how the games start and stop (always one of the 2 choices).  The middle has a lot of variety on how to get a solution.
+It illustrates the consistency of how the games start and stop (always one of the 2 choices).  The middle has a lot of variety on how to get a solution.
 
 ### Q
 The Q Learner uses a basic Q model that takes a short for the context (each bit representing if a Tee is present), and a string action (encoding the source and destination move).
@@ -43,7 +43,7 @@ The Q Learner uses a basic Q model that takes a short for the context (each bit 
 ![qpath](https://github.com/speedyjeff/Reinforcement/blob/main/TeeGame/media/qpath.png)
 
 ### Neural Network
-The neural network takes in 15 inputs (each representing a position and if a Tee is present) and 36 outputs (reprenting each of the possible moves).
+The neural network takes in 15 inputs (each representing a position and if a Tee is present) and 36 outputs (representing each of the possible moves).
 
 ![neuralpath](https://github.com/speedyjeff/Reinforcement/blob/main/TeeGame/media/neuralpath.png)
 

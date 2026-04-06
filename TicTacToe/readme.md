@@ -100,7 +100,7 @@ Last lose                    | 976,266 | 785,420
 Unique boards seen           |   1,982 |   2,109
 Possible moves considered    |   6,327 |   7,048
 
-When they played eachother they hit a cat's game at game 8,130.
+When they played each other they hit a cat's game at game 8,130.
 
 X's first move preference (all equal possibilities):
 ```
@@ -137,7 +137,7 @@ O's first move preference:
 
 #### Reinforcement vs Reinforcement
 
-Learn as the computers choose from the available moves.  Each learning at the same time (with seperate models).  Due to how QLearning works, these models explore more fully all possible combinations.
+Learn as the computers choose from the available moves.  Each learning at the same time (with separate models).  Due to how QLearning works, these models explore more fully all possible combinations.
 
 Stats (out of 1,000,000)  | X's    | O's
 --------------------------|--------|--------
@@ -208,9 +208,9 @@ The first attempt was to flatten into a 9 element array and encode 'o's as -1 an
    | o |  
 ```
 
-This seemed like a resonable approach, but seemed to result in an over fit model that was not training well.  Later experiments likely pointed to a different root cause, but I moved onto a different encoding strategy.
+This seemed like a reasonable approach, but seemed to result in an over fit model that was not training well.  Later experiments likely pointed to a different root cause, but I moved onto a different encoding strategy.
 
-The second attemp, and current approach, is to encode into a 27 element array with sections for 'o's, 'x's, and empties.
+The second attempt, and current approach, is to encode into a 27 element array with sections for 'o's, 'x's, and empties.
 
 ```
    | x |   
@@ -220,28 +220,28 @@ The second attemp, and current approach, is to encode into a 27 element array wi
    | o |  
 ```
 
-This approach has yieled models that converge on successfully learning to play tic-tac-toe.  The actual encoding is for 'mine', 'their's, and empty (but conceptually the description above is accurate).
+This approach has yielded models that converge on successfully learning to play tic-tac-toe.  The actual encoding is for 'mine', 'theirs', and empty (but conceptually the description above is accurate).
 
 #### Encoding Output
-There are 9 possible choices for placing a piece, so the output is a number 0-8, which respresents a cell in the 2d matrix.  It is possible that the model will choose an occupied cell, so the algorithm chooses the most probable winning move.  Over time the model will be trained to not choose cells that are occupied.
+There are 9 possible choices for placing a piece, so the output is a number 0-8, which represents a cell in the 2d matrix.  It is possible that the model will choose an occupied cell, so the algorithm chooses the most probable winning move.  Over time the model will be trained to not choose cells that are occupied.
 
 #### Input for Training
 Similar to the Q Learning examples above, there are various inputs that can be used to train the model.
 
 I initially fell into a trap (same as when training with Q) by using a purely random opponent.  The random opponent taught the model bad habits which ended up making the model look like it was a bad fit for training.  The data suggested that the trained model would win roughly 50% of the time, which is fair from the goal.
 
-To see the model, it works best to explore the space.  The neural network leverages a random opponent for that exploration.  Initially the first 80% of training runs were done random and the remaining 20% used the model.  This was not a good approach as it leads to the network getting 'stuck' and with no further exploration it will never learn anythig better.
+To see the model, it works best to explore the space.  The neural network leverages a random opponent for that exploration.  Initially the first 80% of training runs were done random and the remaining 20% used the model.  This was not a good approach as it leads to the network getting 'stuck' and with no further exploration it will never learn anything better.
 
 The next step was to train 50% and try 50%, interleaving the two throughout the run.  This was a great approach and results in a balanced model.
 
-The way the neural network is trained is using the moves that results in a complete board.  The wins can be positively reinforced and loses can be negatively reinforced.  With such a simple game like tic-tac-toe, where any given move may lead to either a win or a lose, having negative reinforcement is confusing.  As a result, only winnning games were used for training.  Then when training against a much more experienced opponent (Q), the neural network did very poorly - it never won.  The reason is that the game of tic-tac-toe is a cats game for two experienced players (unless they make a mistake).  After also training cats as a positive reinforcement, the nueral network succcessfully got to cats games 100% of the time when competting with Q.
+The way the neural network is trained is using the moves that results in a complete board.  The wins can be positively reinforced and loses can be negatively reinforced.  With such a simple game like tic-tac-toe, where any given move may lead to either a win or a lose, having negative reinforcement is confusing.  As a result, only winning games were used for training.  Then when training against a much more experienced opponent (Q), the neural network did very poorly - it never won.  The reason is that the game of tic-tac-toe is a cats game for two experienced players (unless they make a mistake).  After also training cats as a positive reinforcement, the neural network successfully got to cats games 100% of the time when competing with Q.
 
-The final ingredient was feeding all successfull games (wins and cats) to the network.  This meant that some of the games predicted by the network were also consiserd during trianging.
+The final ingredient was feeding all successful games (wins and cats) to the network.  This meant that some of the games predicted by the network were also considered during training.
 
 #### Parameter Optimization
-There are three fundemental parameters to tune for the neural network: batch size, learning rate, and hidden layers.  
+There are three fundamental parameters to tune for the neural network: batch size, learning rate, and hidden layers.  
 
-After much experimentation, batch sizes of more than 1 resulted in muttled results.  The end is that there is no batching (which is nice in other cases to smooth out the impact of any particular input set), but for tic-tac-toe the precision is needed.  The small learning rate meant that the model takes a bit longer to reach a steady state, but is less influenced by inputs and prefers the aggregate of the past.  Finally, there is no one right answer for the hidden layer size and count.  We ended up with 1 hidden layer that is a multiple of the input - it works well.
+After much experimentation, batch sizes of more than 1 resulted in mottled results.  The end is that there is no batching (which is nice in other cases to smooth out the impact of any particular input set), but for tic-tac-toe the precision is needed.  The small learning rate meant that the model takes a bit longer to reach a steady state, but is less influenced by inputs and prefers the aggregate of the past.  Finally, there is no one right answer for the hidden layer size and count.  We ended up with 1 hidden layer that is a multiple of the input - it works well.
 
 #### Debugging the 'model'
 The ultimate fitness of the model is - "Does it win?"  But when it does not seem to be winning, how do you decompose the results and debug the outcomes and do smart experimentation with the network inputs?
