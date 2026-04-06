@@ -100,14 +100,18 @@ namespace Learning.Tests
         //
         public static void DotTest()
         {
-            var input = new float[] { 0f, 1f, -1f, 0.5f, -0.5f };
-            var expectedOutput = new float[input.Length];
-            for (int i = 0; i < input.Length; i++) expectedOutput[i] = (input[i] > 0f ? input[i] : 0f);
-            var output = ReLU(input);
-            for (int i = 0; i < output.Length; i++)
-            {
-                if (output[i] != expectedOutput[i]) throw new Exception("invalid ReLu");
-            }
+            // [1,2,3] . [4,5,6] = 1*4 + 2*5 + 3*6 = 32
+            var a = new float[] { 1f, 2f, 3f };
+            var b = new float[] { 4f, 5f, 6f };
+            var output = Dot(a, b);
+            if (Math.Abs(output - 32f) > 0.001f) throw new Exception("invalid Dot");
+
+            // test with negative values
+            var c = new float[] { -1f, 0f, 1f, -0.5f };
+            var d = new float[] { 2f, 3f, -1f, 4f };
+            // = -1*2 + 0*3 + 1*-1 + -0.5*4 = -2 + 0 + -1 + -2 = -5
+            var output2 = Dot(c, d);
+            if (Math.Abs(output2 - (-5f)) > 0.001f) throw new Exception("invalid Dot");
         }
 
         public static void DotTestPerf(int iterations)
@@ -343,6 +347,184 @@ namespace Learning.Tests
             for (int i = 0; i < iterations; i++)
             {
                 Multiply(ref a, b);
+            }
+        }
+
+        //
+        // Add
+        //
+        public static void AddTest()
+        {
+            var a = new float[] { 1, 2, 3, 4, 5, 6 };
+            var b = new float[] { 10, 20, 30, 40, 50, 60 };
+            var expected = new float[] { 11, 22, 33, 44, 55, 66 };
+            Add(ref a, b);
+            for (int i = 0; i < a.Length; i++)
+            {
+                if (a[i] != expected[i]) throw new Exception("invalid Add");
+            }
+        }
+
+        public static void AddTestPerf(int iterations)
+        {
+            var a = new float[64];
+            var b = new float[64];
+            var rand = new Random();
+            for (int i = 0; i < a.Length; i++)
+            {
+                a[i] = (float)(rand.NextDouble() % 100) - 50f;
+                b[i] = (float)(rand.NextDouble() % 100) - 50f;
+            }
+
+            for (int i = 0; i < iterations; i++)
+            {
+                Add(ref a, b);
+            }
+        }
+
+        //
+        // SIMD-width correctness tests (larger arrays exercise Vector512/256/128 paths)
+        //
+        public static void ReLuTestLargeArray()
+        {
+            var rand = new Random(42);
+            var input = new float[512];
+            for (int i = 0; i < input.Length; i++) input[i] = (float)(rand.NextDouble() * 2 - 1);
+            var output = ReLU(input);
+            for (int i = 0; i < output.Length; i++)
+            {
+                var expected = input[i] > 0f ? input[i] : 0f;
+                if (output[i] != expected) throw new Exception($"invalid ReLu at index {i}");
+            }
+        }
+
+        public static void dOfReLuTestLargeArray()
+        {
+            var rand = new Random(42);
+            var input = new float[512];
+            for (int i = 0; i < input.Length; i++) input[i] = (float)(rand.NextDouble() * 2 - 1);
+            var output = dOfReLU(input);
+            for (int i = 0; i < output.Length; i++)
+            {
+                var expected = input[i] > 0f ? 1f : 0f;
+                if (output[i] != expected) throw new Exception($"invalid dOfReLu at index {i}");
+            }
+        }
+
+        public static void SoftmaxTestLargeArray()
+        {
+            var rand = new Random(42);
+            var input = new float[512];
+            for (int i = 0; i < input.Length; i++) input[i] = (float)(rand.NextDouble() * 10 - 5);
+            var output = Softmax(input);
+            var sum = 0f;
+            for (int i = 0; i < output.Length; i++)
+            {
+                if (output[i] < 0f) throw new Exception($"invalid Softmax at index {i}: negative value");
+                sum += output[i];
+            }
+            if (Math.Abs(sum - 1f) > 0.01f) throw new Exception($"invalid Softmax: sum={sum}");
+        }
+
+        public static void DotTestLargeArray()
+        {
+            var rand = new Random(42);
+            var a = new float[512];
+            var b = new float[512];
+            var expected = 0f;
+            for (int i = 0; i < a.Length; i++)
+            {
+                a[i] = (float)(rand.NextDouble() * 2 - 1);
+                b[i] = (float)(rand.NextDouble() * 2 - 1);
+                expected += a[i] * b[i];
+            }
+            var output = Dot(a, b);
+            if (Math.Abs(output - expected) > 0.1f) throw new Exception($"invalid Dot: expected={expected} got={output}");
+        }
+
+        public static void DotFirstParamTTestLargeArray()
+        {
+            var rand = new Random(42);
+            var dim = 64;
+            var m = new float[dim][];
+            var v = new float[dim];
+            for (int i = 0; i < dim; i++)
+            {
+                m[i] = new float[dim];
+                for (int j = 0; j < dim; j++) m[i][j] = (float)(rand.NextDouble() * 2 - 1);
+                v[i] = (float)(rand.NextDouble() * 2 - 1);
+            }
+
+            // compute expected: result[j] = sum_i( m[i][j] * v[i] )
+            var expected = new float[dim];
+            for (int j = 0; j < dim; j++)
+                for (int i = 0; i < dim; i++)
+                    expected[j] += m[i][j] * v[i];
+
+            var output = DotFirstParamT(m, v);
+            for (int j = 0; j < dim; j++)
+            {
+                if (Math.Abs(output[j] - expected[j]) > 0.1f) throw new Exception($"invalid DotFirstParamT at index {j}");
+            }
+        }
+
+        public static void SubtractTestLargeArray()
+        {
+            var rand = new Random(42);
+            var a = new float[512];
+            var b = new float[512];
+            for (int i = 0; i < a.Length; i++)
+            {
+                a[i] = (float)(rand.NextDouble() * 100 - 50);
+                b[i] = (float)(rand.NextDouble() * 100 - 50);
+            }
+            var expected = new float[a.Length];
+            for (int i = 0; i < a.Length; i++) expected[i] = a[i] - b[i];
+
+            var output = Subtract(a, b);
+            for (int i = 0; i < output.Length; i++)
+            {
+                if (Math.Abs(output[i] - expected[i]) > 0.001f) throw new Exception($"invalid Subtract at index {i}");
+            }
+        }
+
+        public static void MultiplyTestLargeArray()
+        {
+            var rand = new Random(42);
+            var a = new float[512];
+            var b = new float[512];
+            for (int i = 0; i < a.Length; i++)
+            {
+                a[i] = (float)(rand.NextDouble() * 10 - 5);
+                b[i] = (float)(rand.NextDouble() * 10 - 5);
+            }
+            var expected = new float[a.Length];
+            for (int i = 0; i < a.Length; i++) expected[i] = a[i] * b[i];
+
+            Multiply(ref a, b);
+            for (int i = 0; i < a.Length; i++)
+            {
+                if (Math.Abs(a[i] - expected[i]) > 0.001f) throw new Exception($"invalid Multiply at index {i}");
+            }
+        }
+
+        public static void AddTestLargeArray()
+        {
+            var rand = new Random(42);
+            var a = new float[512];
+            var b = new float[512];
+            var expected = new float[512];
+            for (int i = 0; i < a.Length; i++)
+            {
+                a[i] = (float)(rand.NextDouble() * 100 - 50);
+                b[i] = (float)(rand.NextDouble() * 100 - 50);
+                expected[i] = a[i] + b[i];
+            }
+
+            Add(ref a, b);
+            for (int i = 0; i < a.Length; i++)
+            {
+                if (Math.Abs(a[i] - expected[i]) > 0.001f) throw new Exception($"invalid Add at index {i}");
             }
         }
     }
