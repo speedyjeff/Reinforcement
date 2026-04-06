@@ -1,5 +1,5 @@
 ## Neural Networks
-Neural networks are a prediction algorithm that can be trained to reconginize patterns and are used throughout the industry for AI.
+Neural networks are a prediction algorithm that can be trained to recognize patterns and are used throughout the industry for AI.
 
 This is a sample for using a neural network on The MNIST database of handwritten digits.  You can grab the input from a number of places, but I grabbed it from [here](http://yann.lecun.com/exdb/mnist/).
 
@@ -16,7 +16,7 @@ There are a number of variables that influence the accuracy of the trained model
  * Learning rate - a value that influences how much the model takes into account new data
  * Hidden layers - how many and how large the hidden layers are adds/removes complexity from the network, potentially increasing accuracy
  * Mini batches - updates can be applied to the model after every training, or in batches to smooth out the impact
- * Shuffling - shuffling the input along with mini batches varies subesequent learning and thus training
+ * Shuffling - shuffling the input along with mini batches varies subsequent learning and thus training
  * Iterations - how many times a model is run
 
 All models start with crypto random values between -0.5 and 0.5, for all weights and bias'.
@@ -34,7 +34,7 @@ Split - 80/20        | | | |
 Learning rate = 0.80 | 45.675%       | 59.625%            | 31.191668%              |
 Mini batch = 100     | w/ shuffle    | w/ shuffle         | w/ shuffle              |
 Iterations = 1       | 57.325%       | 49.408333%         | 22.983334%              |
-Input size = 60K     | 10 itreations | 10 itreations      | 10 itreations           |
+Input size = 60K     | 10 iterations | 10 iterations      | 10 iterations           |
 Split - 80/20        | 78.525%       | 75.48333%          | 65.59167%               |
 ---------------------|---------------|--------------------|-------------------------|
 Learning rate = 0.15 | 9.291667%     | 12.233334%         | 12.341666%              |
