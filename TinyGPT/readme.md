@@ -43,6 +43,14 @@ After a series of trainings, an Inference can be captured to check progress.  An
 
 An aspect of inference is to inject some level of variability in what the model replies.  Foundationally, the model will return the most probable next token in a sequence.  However, there are gradient of next most probable tokens that may fit.  The client can then have a weighted choice of choosing the most probable down through the top N predictions.  This provides variability in the reply when asked the same question multiple times.
 
+Step 5: GPT-style Text Generation.
+Once a model is trained, it can generate free-form text using several sampling techniques:
+ - **Temperature** - Controls randomness of the output.  Lower values (closer to 0) make the model more deterministic, higher values increase diversity.  Default is 0.8.
+ - **Top-K Sampling** - Restricts sampling to the K most probable next tokens, reducing the chance of low-quality predictions.  Default is 10.
+ - **Repetition Penalty** - Tracks recently generated tokens in a sliding window and penalizes them to reduce repetitive loops.  Default window is 20 tokens.
+ - **Prompt-based Generation** - A starting prompt can be provided to seed the generation, allowing the model to continue from a user-specified context.
+ - **One-Hot Encoding** - Input representation where each token position is encoded as a binary vector of vocabulary size, rather than a raw token ID.  This provides a richer input signal to the network.
+
 Fully trained:
 At this point, a model can accurately predict a sequence of tokens in a logical order (based on training input).  The following steps are how to take a base model and turn it into an assistant with a prompt.
 
@@ -108,5 +116,6 @@ Input tokenization using BPE can consolidate common bytes (eg. characters) into 
 
 There are several configuration options for Neural Networks.  A few common configs are learning factor, hidden layers, and layer initialization strategies.  Through experimentation, a balance can be struck with these configs.
 
+Input encoding strategy is another important choice.  The initial approach passed raw token IDs as input values.  The new approach is a one-hot encoding, where each token position is expanded into a binary vector of vocabulary size.  One-hot encoding gives the network a richer representation but increases the input layer size by a factor of the vocabulary size.
 
 

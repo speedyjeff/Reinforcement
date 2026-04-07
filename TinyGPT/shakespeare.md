@@ -6,8 +6,31 @@ Many experiments were run to find the right parameters in order to train a base 
 The following command is a reasonable run to give this a try.
 
 ```
-tinygpt.exe -d 2 -sh tinyshakespeare.txt -se 16 -p 0.001
+tinygpt.exe -d 2 -sh tinyshakespeare.txt -se 16 -p 0.01
 ```
+
+##### GPT-style Text Generation
+After training, the model can generate free-form text using temperature-scaled sampling, top-K filtering, and repetition penalty.  These options control the quality and diversity of the generated output.
+
+| Option | Flag | Default | Description |
+|--------|------|---------|-------------|
+| Temperature | `-te` | 0.8 | Sampling temperature. 0 = greedy (always pick the most probable token). Higher values increase randomness. |
+| Top-K | `-tk` | 10 | Number of top candidates to sample from. |
+| Repetition Penalty Window | `-rp` | 20 | Number of recent tokens tracked to reduce repetitive loops. |
+| Prompt | `-pr` | (empty) | Starting text to seed generation. The model continues from this context. |
+| Stream Length | `-sl` | 1000 | Number of tokens to generate during stream inference. |
+
+Example with a custom prompt and greedy decoding:
+```
+tinygpt.exe -d 2 -sh tinyshakespeare.txt -se 16 -p 0.01 -te 0 -pr "To be or not"
+```
+
+##### Updated Defaults
+The default Shakespeare configuration has been tuned for better convergence:
+ - `PercentOfText` increased from 0.01% to 1% (`-p 0.01`)
+ - `LearningFactor` increased from 0.00001 to 0.0001
+ - Weight initialization set to He (`-w 4`)
+ - Bias initialization set to Zero (`-b 2`)
 
 ##### Successful Attempts
 Several combinations of parameters could yield a successful model.  Success is defined as reaching at least 80% inference accuracy with training set.  To further test the model, a stream inference was produced and inspected visually.  Could the model produce a 1k sequence of tokens that were English, with proper grammar and spelling.
@@ -100,10 +123,12 @@ Line Numbers | Observation
 This portion of Shakespeare's work was chosen at random and contained a number of repetitive phrases.  The model, with the context given, ended up not re-telling the story linearly as a result of multiple duplicated phrases leading to different parts of the text.
 
 #### Next Steps
- 1. Investigate ways to train parallel models and merge results
+ 1. ~~Investigate ways to train parallel models and merge results~~ (Done - NeuralNetwork supports merging trainings)
  2. Increase token length (from 1)
- 3. Explore output that is not the top probability, but the 2nd or 3rd.
- 3. Go beyond a base model to post-training steps
+ 3. ~~Explore output that is not the top probability, but the 2nd or 3rd.~~ (Done - temperature-scaled sampling with top-K)
+ 4. Go beyond a base model to post-training steps
+ 5. ~~Evaluate one-hot vs raw token ID encoding on larger training sets~~ (Done - now the default)
+ 6. Experiment with prompt-guided generation on different portions of Shakespeare's works
 
 #### Learning Attempts
 Attempts that did not yield a successful base model, but offered insight.  Below is just a sample of all the attempts, there were many more.

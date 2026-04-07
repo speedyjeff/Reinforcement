@@ -5,10 +5,11 @@ namespace Learning.LanguageModel
 {
     public class TinyLanguageModel
     {
-        public TinyLanguageModel(NeuralOptions options, int paddingToken)
+        public TinyLanguageModel(NeuralOptions options, int paddingToken, int tokenCount)
         {
             // init
             PaddingToken = paddingToken;
+            TokenCount = tokenCount;
 
             // create a neural network based on this tokenizer
             Network = new NeuralNetwork(options);
@@ -29,67 +30,61 @@ namespace Learning.LanguageModel
             // the smallest min token count is 1
             if (minTokenCount <= 0) minTokenCount = 1;
 
-            // prefill the network from 0 to minTokenCount - 1 and the rest with padding
-            for (var i = 0; i < NetworkInput.Length; i++)
+            // one-hot encoding: each position gets a TokenCount-length binary vector
+            int sequenceLength = NetworkInput.Length / TokenCount;
+            Array.Clear(NetworkInput, 0, NetworkInput.Length);
+
+            // prefill with tokens up to minTokenCount-1 (setting 1 token per window)
+            for (int i = 0; i < minTokenCount - 1 && i < tokens.Count && i < sequenceLength; i++)
             {
-                if (i < (minTokenCount - 1) && i < tokens.Count) NetworkInput[i] = (float)tokens[i];
-                else NetworkInput[i] = (float)PaddingToken;
+                NetworkInput[(i * TokenCount) + tokens[i]] = 1.0f;
+            }
+            // padding for remaining positions (setting 1 token per window)
+            for (int i = Math.Min(minTokenCount - 1, Math.Min(tokens.Count, sequenceLength)); i < sequenceLength; i++)
+            {
+                NetworkInput[(i * TokenCount) + PaddingToken] = 1.0f;
             }
 
-            // train to all possible sequences
-            for (int i = minTokenCount - 1; i < tokens.Count - 1; i++)
+            // progressively reveal tokens and train
+            for (int i = minTokenCount - 1; i < tokens.Count - 1 && i < sequenceLength; i++)
             {
+                // turn off the padding token
+                NetworkInput[i * TokenCount + PaddingToken] = 0.0f;
                 // include the next token
-                NetworkInput[i] = (float)tokens[i];
+                NetworkInput[i * TokenCount + tokens[i]] = 1.0f;
 
-                // train
+                // evaluate and reinforce
                 var output = Network.Evaluate(NetworkInput);
-
-                // reinforce
                 Network.Learn(output, preferredResult: tokens[i + 1]);
             }
         }
 
-        public int Inference(List<int> tokens)
+        public NeuralOutput Inference(List<int> tokens, float temperature = 1.0f)
         {
-            // return the top prediction
-            var result = new int[0];
-            return Inference(tokens, ref result);
-        }
-
-        public int Inference(List<int> tokens, ref int[] inferences)
-        {
-            // predict the next token
+            // predict the next token and optionally scale the probabilities by temperature
             if (tokens == null || tokens.Count == 0) throw new ArgumentException("tokens cannot be null or empty");
-            if (tokens.Count > Network.InputNumber) throw new ArgumentException("tokens must match the model input number");
-
-            // set the input based on the first i tokens
-            for (var j = 0; j < NetworkInput.Length; j++)
+            
+            // one-hot encoding: each position gets a TokenCount-length binary vector
+            int sequenceLength = NetworkInput.Length / TokenCount;
+            Array.Clear(NetworkInput, 0, NetworkInput.Length);
+            for (int i = 0; i < tokens.Count && i < sequenceLength; i++)
             {
-                if (j < tokens.Count) NetworkInput[j] = (float)tokens[j];
-                else NetworkInput[j] = (float)PaddingToken;
+                NetworkInput[i * TokenCount + tokens[i]] = 1.0f;
+            }
+            for (int i = tokens.Count; i < sequenceLength; i++)
+            {
+                NetworkInput[i * TokenCount + PaddingToken] = 1.0f;
             }
 
             // predict
             var output = Network.Evaluate(NetworkInput);
 
-            // check if returning more than 1 result
-            if (inferences != null && inferences.Length > 0)
-            {
-                if (inferences.Length == 1)
-                {
-                    // fill in the top probability
-                    inferences[0] = output.Result;
-                }
-                else
-                {
-                    // fill in the top probabilities
-                    var top = new TopN(inferences.Length);
-                    for (var i = 0; i < output.Probabilities.Length; i++) top.Add(output.Probabilities[i], i, ref inferences);
-                }
-            }
+            // use the network probabilities as-is for greedy or standard inference
+            if (temperature <= 0.01f || Math.Abs(temperature - 1.0f) < 0.001f) return output;
 
-            return output.Result;
+            // re-apply softmax with temperature scaling on the pre-softmax logits
+            output.Probabilities = ScaleProbabilities(output.Z[output.Z.Length - 1], temperature);
+            return output;
         }
 
         public TinyLanguageModel Copy()
@@ -99,6 +94,7 @@ namespace Learning.LanguageModel
             {
                 Network = NeuralNetwork.Load(Network),
                 PaddingToken = PaddingToken,
+                TokenCount = TokenCount,
                 NetworkInput = new float[NetworkInput.Length]
             };
         }
@@ -116,6 +112,7 @@ namespace Learning.LanguageModel
             {
                 Network = NeuralNetwork.Merge(networks, options),
                 PaddingToken = models[0].PaddingToken,
+                TokenCount = models[0].TokenCount,
                 NetworkInput = new float[models[0].NetworkInput.Length]
             };
         }
@@ -124,45 +121,35 @@ namespace Learning.LanguageModel
         private NeuralNetwork Network;
         private float[] NetworkInput;
         private int PaddingToken;
+        private int TokenCount;
 
         private TinyLanguageModel() { }
 
-        struct TopN
+        private static float[] ScaleProbabilities(float[] logits, float temperature)
         {
-            public TopN(int size)
+            var result = new float[logits.Length];
+
+            // find max for numerical stability
+            var max = Single.MinValue;
+            for (int i = 0; i < logits.Length; i++)
             {
-                Maxes = new float[size];
-                for(int i=0; i < Maxes.Length; i++) Maxes[i] = Single.MinValue;
+                result[i] = logits[i] / temperature;
+                if (result[i] > max) max = result[i];
             }
 
-            public void Add(float probability, int index, ref int[] indexes)
+            // softmax
+            var sum = 0f;
+            for (int i = 0; i < result.Length; i++)
             {
-                // check if greater than the max, if so shift and add
-                for (var i = 0; i < Maxes.Length; i++)
-                {
-                    if (probability > Maxes[i])
-                    {
-                        Shift(i, ref indexes);
-                        indexes[i] = index;
-                        Maxes[i] = probability;
-                        break;
-                    }
-                }
+                result[i] = (float)Math.Exp(result[i] - max);
+                sum += result[i];
+            }
+            if (sum > 0f)
+            {
+                for (int i = 0; i < result.Length; i++) result[i] /= sum;
             }
 
-            #region private
-            private float[] Maxes;
-
-            private void Shift(int index, ref int[] indexes)
-            {
-                // shift the index
-                for (var i = Maxes.Length - 1; i > index; i--)
-                {
-                    indexes[i] = indexes[i - 1];
-                    Maxes[i] = Maxes[i - 1];
-                }
-            }
-            #endregion
+            return result;
         }
         #endregion
     }

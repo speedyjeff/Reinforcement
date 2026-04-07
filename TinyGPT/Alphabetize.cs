@@ -31,6 +31,10 @@ namespace TinyGPT
             SequenceLength = options.SequenceLength;
             Vocabulary = options.Vocabulary.ToCharArray();
 
+            // the context window must be large enough to hold both the unsorted input
+            // and the growing sorted output during autoregressive generation
+            ContextWindow = SequenceLength * 2;
+
             // create the tokenizer
             Tokenizer = Tokenizer.Create(
                 new string(Vocabulary),
@@ -42,7 +46,7 @@ namespace TinyGPT
                 });
 
             // create the hidden layers
-            var hiddenLayerNum = new int[] { SequenceLength * 4 }; 
+            var hiddenLayerNum = new int[] { ContextWindow * 4 }; 
             if (options.HiddenLayers != null && options.HiddenLayers.Length > 0)
             {
                 // user defined
@@ -50,24 +54,26 @@ namespace TinyGPT
                 for (int i = 0; i < options.HiddenLayers.Length; i++)
                 {
                     if (options.HiddenLayers[i] <= 0) throw new ArgumentException($"Hidden layer {i} must be greater than 0");
-                    hiddenLayerNum[i] = SequenceLength * options.HiddenLayers[i];
+                    hiddenLayerNum[i] = ContextWindow * options.HiddenLayers[i];
                 }
             }
 
             // create the tinyLanguageModel
+            var tokenCount = Tokenizer.Tokens.Count;
             Model = new TinyLanguageModel(
                 new NeuralOptions()
                 {
-                    InputNumber = SequenceLength * 2, // the sequence and the correct output
+                    InputNumber = ContextWindow * tokenCount,
                     OutputNumber = Vocabulary.Length,
                     HiddenLayerNumber = hiddenLayerNum,
-                    LearningRate = options.LearningFactor,  //0.0001f
+                    LearningRate = options.LearningFactor,
                     MinibatchCount = 1,
                     ParallizeExecution = false,
                     WeightInitialization = options.WeightInitialization,
                     BiasInitialization = options.BiasInitialization
                 },
-                paddingToken: Tokenizer.Tokens[Tokenizer.Padding]);
+                paddingToken: Tokenizer.Tokens[Tokenizer.Padding],
+                tokenCount: tokenCount);
         }
 
         public void TrainParallel(int iterations, int fitnessInferences, int instances = 1)
@@ -122,7 +128,7 @@ namespace TinyGPT
                 var answer = new List<int>();
                 for (int j=0; j<SequenceLength; j++)
                 {
-                    var result = Model.Inference(tokens);
+                    var result = Model.Inference(tokens).Result;
                     if (verbose) Console.WriteLine($"Current: {Tokenizer.Decode(tokens)} Result: {Tokenizer.Decode(result)}");
                     tokens.Add(result);
                     answer.Add(result);
@@ -152,6 +158,7 @@ namespace TinyGPT
         private Tokenizer Tokenizer;
         private TinyLanguageModel Model;
         private int SequenceLength;
+        private int ContextWindow;
 
         private void Train(TinyLanguageModel model, int iterations)
         {

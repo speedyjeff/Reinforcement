@@ -42,7 +42,8 @@ namespace TinyGPT
 
                     var correct = alpha.Inference(options.Inferences, verbose: false);
                     // show periodic progress
-                    if (options.Verbose || i == options.TrainingIterations - 1 || i % (options.TrainingIterations / 1000) == 0)
+                    var alphaLogInterval = Math.Max(options.TrainingIterations / 1000, 1);
+                    if (options.Verbose || i == options.TrainingIterations - 1 || i % alphaLogInterval == 0)
                     {
                         Console.WriteLine($"{i}\t{correct}/{options.Inferences}");
                     }
@@ -76,11 +77,18 @@ namespace TinyGPT
                     MinTokenCount = options.MinTrainSequenceLength,
                     StaticStartingPoint = false,
                     HiddenLayers = options.LayerMultipliers,
-                    LearningFactor = options.LearningFactor
+                    LearningFactor = options.LearningFactor,
+                    Temperature = options.Temperature,
+                    TopK = options.TopK,
+                    RepetitionPenaltyWindow = options.RepetitionPenaltyWindow,
+                    Prompt = options.Prompt,
+                    StreamLength = options.StreamLength
                 });
 
                 // train and infer
                 var successfulRunCount = 0;
+                var timer = new Stopwatch();
+                timer.Start();
                 for (int i = 0; i < options.TrainingIterations; i++)
                 {
                     // train
@@ -89,12 +97,13 @@ namespace TinyGPT
 
                     // inference
                     var percentCorrect = shakespeare.Inference(options.Inferences, verbose: false);
-                    if (options.Verbose || i == options.TrainingIterations - 1 || i % (options.TrainingIterations / 1000) == 0)
+                    var logInterval = Math.Max(options.TrainingIterations / 1000, 1);
+                    if (options.Verbose || i == options.TrainingIterations - 1 || i % logInterval == 0)
                     {
                         Console.WriteLine($"{i}\t{percentCorrect * 100f}%");
 
                         // display an inferred paragraph
-                        shakespeare.InferStream(length: 1000);
+                        shakespeare.InferStream(length: options.StreamLength, prompt: options.Prompt);
                     }
 
                     // track success
@@ -113,13 +122,19 @@ namespace TinyGPT
                 Console.WriteLine("Stats:");
                 for (int i = 0; i < shakespeare.Debug_InferenceStats.InferenceCount.Length; i++)
                 {
-                    Console.WriteLine($"{i}\t{shakespeare.Debug_InferenceStats.InferenceCount[i]}\t{shakespeare.Debug_InferenceStats.InferenceCorrect[i]}\t{((float)shakespeare.Debug_InferenceStats.InferenceCorrect[i] * 100f)/(float)shakespeare.Debug_InferenceStats.InferenceCount[i]}%");
+                    var count = shakespeare.Debug_InferenceStats.InferenceCount[i];
+                    var correctStat = shakespeare.Debug_InferenceStats.InferenceCorrect[i];
+                    var pct = count > 0 ? ((float)correctStat * 100f) / (float)count : 0f;
+                    Console.WriteLine($"{i}\t{count}\t{correctStat}\t{pct:F1}%");
                 }
                 Console.WriteLine("Top N Stats:");
                 for (int i = 0; i < shakespeare.Debug_InferenceStats.TopNCorrect.Length; i++)
                 {
                     Console.WriteLine($"{i}\t{shakespeare.Debug_InferenceStats.TopNCorrect[i]}");
                 }
+
+                timer.Stop();
+                Console.WriteLine($"Elapsed: {timer.ElapsedMilliseconds} ms");
 
                 // todo - save the network and tokenizer to disk
             }
