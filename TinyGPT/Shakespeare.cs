@@ -21,6 +21,11 @@ namespace TinyGPT
         public TokenizerNormalization NormalizeTokens = TokenizerNormalization.None;
         public NeuralWeightInitialization WeightInitialization = NeuralWeightInitialization.Random_Uniform_NegHalf_PosHalf;
         public NeuralBiasInitialization BiasInitialization = NeuralBiasInitialization.Random_Uniform_NegHalf_PosHalf;
+        public float Temperature = 0.8f;
+        public int TopK = 10;
+        public int RepetitionPenaltyWindow = 20;
+        public string Prompt = "";
+        public int StreamLength = 1000;
 
         public ShakespeareOptions() { }
     }
@@ -101,20 +106,26 @@ namespace TinyGPT
                 }
             }
 
+            var tokenCount = Tokenizer.Tokens.Count;
+            var inputSize = options.SequenceLength * tokenCount;
+
             // create the model
             Model = new TinyLanguageModel(
                 new NeuralOptions()
                 {
-                    InputNumber = options.SequenceLength,
-                    OutputNumber = Tokenizer.Tokens.Count,
+                    InputNumber = inputSize,
+                    OutputNumber = tokenCount,
                     HiddenLayerNumber = hiddenLayerNum,
-                    LearningRate = options.LearningFactor, // 0.00001f
+                    LearningRate = options.LearningFactor,
                     MinibatchCount = 1,
                     ParallizeExecution = false,
                     WeightInitialization = options.WeightInitialization,
                     BiasInitialization = options.BiasInitialization
                 },
-                paddingToken: Tokenizer.Tokens[Tokenizer.Padding]);
+                paddingToken: Tokenizer.Tokens[Tokenizer.Padding],
+                tokenCount: tokenCount);
+
+            Console.WriteLine($"Network: input={inputSize} hidden=[{string.Join(",", hiddenLayerNum)}] output={tokenCount}");
         }
 
         public Stats Debug_InferenceStats;
@@ -170,7 +181,9 @@ namespace TinyGPT
                 var top = new int[TopN];
                 for (int j = (Options.MinTokenCount-1); j < Options.SequenceLength; j++)
                 {
-                    var result = Model.Inference(tokens, ref top);
+                    var output = Model.Inference(tokens);
+                    var result = output.Result;
+                    FillTopResults(output.Probabilities, top);
                     var correct = Encoded[start + j + 1];
 
                     // check if any of the top results are correct
@@ -210,33 +223,62 @@ namespace TinyGPT
             return (float)correctCount / (float)totalCount;
         }
 
-        public void InferStream(int length)
+        public void InferStream(int length = 1000, string prompt = null)
         {
-            // start an inference with a random token and then continue to add tokens (and slide the window) until we hit length inferences
             var tokens = new List<int>();
-            // get a random token to start with
-            var start = (int)Math.Floor(GetRandom() * (Encoded.Count - Options.MinTokenCount));
-            if (Options.StaticStartingPoint) start = 0;
-            // add MinTokenCount tokens from start
-            for(int i=0; i<Options.MinTokenCount; i++) tokens.Add(Encoded[start + i]);
 
-            // display the token
+            // seed from a user-provided prompt or a random corpus position
+            if (!string.IsNullOrEmpty(prompt))
+            {
+                try
+                {
+                    tokens = Tokenizer.Encode(prompt);
+                    while (tokens.Count > Options.SequenceLength) tokens.RemoveAt(0);
+                }
+                catch
+                {
+                    Console.WriteLine("prompt contains characters not in vocabulary, fall back to random seed");
+                    tokens.Clear();
+                }
+            }
+
+            if (tokens.Count == 0)
+            {
+                // seed with a full context window for best prediction quality
+                var seedLength = Math.Min(Options.SequenceLength, Encoded.Count);
+                var start = 0;
+                if (!Options.StaticStartingPoint) start = (int)Math.Floor(GetRandom() * (Encoded.Count - seedLength));
+                for (int i = 0; i < seedLength; i++) tokens.Add(Encoded[start + i]);
+            }
+
+            // display the seed
             Console.Write($"'{Normalize(Tokenizer.Decode(tokens))}");
 
-            // make an inference and add the result and repeat until length inferences
+            // track recently generated tokens for repetition penalty
+            var recentTokens = new Queue<int>();
+
+            // generate tokens one at a time
             for (int i = 0; i < length; i++)
             {
-                // make sure that tokens.Count does not exceed the model input number
-                if (tokens.Count > Options.SequenceLength) tokens.RemoveAt(0);
+                // slide the window to stay within the context length
+                while (tokens.Count > Options.SequenceLength) tokens.RemoveAt(0);
 
-                // inference
-                var result = Model.Inference(tokens);
+                // get temperature-scaled probability distribution from the model
+                var probs = Model.Inference(tokens, Options.Temperature).Probabilities;
 
-                // display the token
+                // sample from top-K with repetition penalty
+                var result = SampleWithProbabilities(probs, Options.TopK, recentTokens);
+
+                // display and accumulate
                 Console.Write($"{Normalize(Tokenizer.Decode(result))}");
-
-                // add to the result
                 tokens.Add(result);
+
+                // update repetition tracking
+                if (Options.RepetitionPenaltyWindow > 0)
+                {
+                    recentTokens.Enqueue(result);
+                    while (recentTokens.Count > Options.RepetitionPenaltyWindow) recentTokens.Dequeue();
+                }
             }
             Console.WriteLine("'");
         }
@@ -248,6 +290,96 @@ namespace TinyGPT
         private ShakespeareOptions Options;
         private RandomNumberGenerator Rand;
         private const int TopN = 4;
+
+        private static void FillTopResults(float[] probabilities, int[] topResults)
+        {
+            if (topResults == null || topResults.Length == 0) return;
+
+            var maxes = new float[topResults.Length];
+            for (int i = 0; i < maxes.Length; i++)
+            {
+                maxes[i] = Single.MinValue;
+                topResults[i] = -1;
+            }
+
+            for (int i = 0; i < probabilities.Length; i++)
+            {
+                for (int j = 0; j < maxes.Length; j++)
+                {
+                    if (probabilities[i] > maxes[j])
+                    {
+                        for (int k = maxes.Length - 1; k > j; k--)
+                        {
+                            topResults[k] = topResults[k - 1];
+                            maxes[k] = maxes[k - 1];
+                        }
+                        topResults[j] = i;
+                        maxes[j] = probabilities[i];
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Selects a token by applying a repetition penalty to recently used tokens,
+        // extracting the top-K highest-probability candidates, then either returning
+        // the best candidate (greedy) or sampling from the normalized top-K distribution.
+        // NOTE: this method modifies the probs array in place.
+        private int SampleWithProbabilities(float[] probs, int topK, Queue<int> recentTokens)
+        {
+            topK = Math.Clamp(topK, 1, probs.Length);
+
+            // apply repetition penalty in place
+            if (recentTokens != null && recentTokens.Count > 0)
+            {
+                foreach (var recent in recentTokens)
+                {
+                    if (recent >= 0 && recent < probs.Length)
+                        probs[recent] *= 0.1f;
+                }
+            }
+
+            // find top-K indices
+            var topIndices = new int[topK];
+            var topProbs = new float[topK];
+            for (int i = 0; i < topK; i++) topProbs[i] = Single.MinValue;
+
+            for (int i = 0; i < probs.Length; i++)
+            {
+                for (int j = 0; j < topK; j++)
+                {
+                    if (probs[i] > topProbs[j])
+                    {
+                        // shift lower entries down
+                        for (int k = topK - 1; k > j; k--)
+                        {
+                            topIndices[k] = topIndices[k - 1];
+                            topProbs[k] = topProbs[k - 1];
+                        }
+                        topIndices[j] = i;
+                        topProbs[j] = probs[i];
+                        break;
+                    }
+                }
+            }
+
+            // greedy mode
+            if (Options.Temperature <= 0.01f) return topIndices[0];
+
+            // normalize top-K probabilities and sample
+            var sum = 0f;
+            for (int i = 0; i < topK; i++) sum += Math.Max(topProbs[i], 0f);
+            if (sum <= 0f) return topIndices[0];
+
+            var roll = GetRandom() * sum;
+            var cumulative = 0f;
+            for (int i = 0; i < topK; i++)
+            {
+                cumulative += Math.Max(topProbs[i], 0f);
+                if (roll <= cumulative) return topIndices[i];
+            }
+            return topIndices[0];
+        }
 
         private void Train(TinyLanguageModel model, int iterations)
         {

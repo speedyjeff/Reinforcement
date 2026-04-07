@@ -34,6 +34,11 @@ namespace TinyGPT
         public int TokenizerIterations { get; set; }
         public int NormalizeTokens { get; set; }
         public bool Verbose { get; set; }
+        public float Temperature { get; set; }
+        public int TopK { get; set; }
+        public int RepetitionPenaltyWindow { get; set; }
+        public string Prompt { get; set; }
+        public int StreamLength { get; set; }
 
         public static void ShowHelp()
         {
@@ -59,6 +64,11 @@ namespace TinyGPT
             Console.WriteLine("   -to[kenizerIterations] <int> - number of iterations to use for the tokenizer (default is 10)");
             Console.WriteLine("   -n[ormalizeTokens] <int>     - normalization to use for the tokenizer (default is 0)");
             Console.WriteLine("   -m[inTrainSequenceLength] <int> - minimum sequence length when training (default is 1)");
+            Console.WriteLine("   -te[mperature] <real>            - sampling temperature, 0=greedy (default is 0.8)");
+            Console.WriteLine("   -tk[topk] <int>                  - top-k candidates for sampling (default is 10)");
+            Console.WriteLine("   -rp[repetitionPenalty] <int>     - recent token window for repetition penalty (default is 20)");
+            Console.WriteLine("   -pr[ompt] <text>                 - starting prompt text for generation");
+            Console.WriteLine("   -sl[streamLength] <int>          - number of tokens to generate in stream (default is 1000)");
             Console.WriteLine("  -ve[rbose]               - verbose output");
             Console.WriteLine("  -h[elp]                  - show this help message");
         }
@@ -90,22 +100,29 @@ namespace TinyGPT
             if (options.Dataset == DatasetType.Alphabet)
             {
                 options.Vocabulary = "ABC";
-                options.SequenceLength = 6;
+                options.SequenceLength = 3;
                 options.SuccessCriteria = 1.0f;
-                options.LayerMultipliers = new int[] { 4 };
-                options.LearningFactor = 0.0001f;
+                options.LayerMultipliers = new int[] { 8, 8 };
+                options.LearningFactor = 0.001f;
             }
             else if (options.Dataset == DatasetType.Shakespeare)
             {
                 options.SequenceLength = 16;
-                options.PercentOfText = 0.0001f;
+                options.PercentOfText = 0.01f;
                 options.ShakespeareFilepath = "";
                 options.TokenizerIterations = 0;
                 options.NormalizeTokens = 0;
                 options.SuccessCriteria = 0.95f;
                 options.MinTrainSequenceLength = 1;
                 options.LayerMultipliers = new int[] { 4, 4, 4, 4, 4, 4, 4, 4 };
-                options.LearningFactor = 0.00001f;
+                options.LearningFactor = 0.0001f;
+                options.WeightInitialization = NeuralWeightInitialization.He;
+                options.BiasInitialization = NeuralBiasInitialization.Zero;
+                options.Temperature = 0.8f;
+                options.TopK = 10;
+                options.RepetitionPenaltyWindow = 20;
+                options.Prompt = "";
+                options.StreamLength = 1000;
             }
 
             for (; i < args.Length; i++)
@@ -202,6 +219,31 @@ namespace TinyGPT
                     case "-normalizetokens":
                         if (++i >= args.Length) throw new ArgumentException("normalize tokens not specified");
                         options.NormalizeTokens = int.Parse(args[i]);
+                        break;
+                    case "-te":
+                    case "-temperature":
+                        if (++i >= args.Length) throw new ArgumentException("temperature not specified");
+                        options.Temperature = float.Parse(args[i]);
+                        break;
+                    case "-tk":
+                    case "-topk":
+                        if (++i >= args.Length) throw new ArgumentException("topk not specified");
+                        options.TopK = int.Parse(args[i]);
+                        break;
+                    case "-rp":
+                    case "-repetitionpenalty":
+                        if (++i >= args.Length) throw new ArgumentException("repetition penalty window not specified");
+                        options.RepetitionPenaltyWindow = int.Parse(args[i]);
+                        break;
+                    case "-pr":
+                    case "-prompt":
+                        if (++i >= args.Length) throw new ArgumentException("prompt not specified");
+                        options.Prompt = args[i];
+                        break;
+                    case "-sl":
+                    case "-streamlength":
+                        if (++i >= args.Length) throw new ArgumentException("stream length not specified");
+                        options.StreamLength = int.Parse(args[i]);
                         break;
                     case "-ve":
                     case "-verbose":

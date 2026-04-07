@@ -79,6 +79,11 @@ namespace Learning
 
             Console.WriteLine("tiny language model tests...");
             LanguageModelTiny.Converge();
+            LanguageModelTiny.InferenceRejectsInvalidInput();
+            LanguageModelTiny.InferenceResultMatchesTopProbability();
+            LanguageModelTiny.InferenceDefaultTemperatureMatchesExplicitOne();
+            LanguageModelTiny.InferenceTemperatureScalingProducesValidProbabilities();
+            LanguageModelTiny.InferenceHandlesShortAndLongInputs();
 
             Console.WriteLine("deep q tests...");
             DeepQTests.EndToEnd();
