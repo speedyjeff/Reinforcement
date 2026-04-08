@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics.Tensors;
 
 namespace Learning.LanguageModel
 {
@@ -128,27 +129,8 @@ namespace Learning.LanguageModel
         private static float[] ScaleProbabilities(float[] logits, float temperature)
         {
             var result = new float[logits.Length];
-
-            // find max for numerical stability
-            var max = Single.MinValue;
-            for (int i = 0; i < logits.Length; i++)
-            {
-                result[i] = logits[i] / temperature;
-                if (result[i] > max) max = result[i];
-            }
-
-            // softmax
-            var sum = 0f;
-            for (int i = 0; i < result.Length; i++)
-            {
-                result[i] = (float)Math.Exp(result[i] - max);
-                sum += result[i];
-            }
-            if (sum > 0f)
-            {
-                for (int i = 0; i < result.Length; i++) result[i] /= sum;
-            }
-
+            TensorPrimitives.Divide(logits, temperature, result);
+            TensorPrimitives.SoftMax(result, result);
             return result;
         }
         #endregion
